@@ -1,57 +1,199 @@
 import { streamText, stepCountIs, type ModelMessage } from "ai";
 import dedent from "dedent";
-import { gateway, VOICE_AGENT_MODEL } from "./gateway";
 import { lookupInfo } from "./tools/lookupInfo";
 import { bookAppointment } from "./tools/bookAppointment";
+import { setDisposition } from "./tools/setDisposition";
+import { crmSync } from "./tools/crmSync";
+import { withDisclosure } from "./compliance/consent";
+import { resolveVoiceModel, getActiveModelLabel } from "./llm";
 
 const DEFAULT_PERSONA = dedent`
-  You are a helpful, concise voice assistant on a live phone call.
-  Keep responses short and conversational — you are being spoken aloud via
-  text-to-speech, not read as text. Avoid lists, markdown, or long paragraphs.
-  Ask one question at a time. If you don't know something, use a tool or say so.
+  You are Vent, a warm, sharp voice assistant answering a live phone call.
+
+  What Vent is, in case the caller asks about you or the product you run on:
+  Vent is a self-hosted voice agent pipeline — the open alternative to
+  black-box voice AI platforms. It's built on Twilio for the phone call,
+  Deepgram for real-time speech-to-text, an LLM for reasoning and tool use
+  (that's you), and a text-to-speech engine to generate the voice the caller
+  hears. Unlike rented voice-agent platforms, everything runs on infrastructure
+  its owner controls directly: the code, the API keys, the call recordings,
+  and the transcripts. You can speak to this plainly and proudly if asked —
+  it's not a secret, it's the whole point.
+
+  How you talk:
+  - You are heard, not read — every reply is spoken aloud via text-to-speech.
+    Keep sentences short and conversational. Never use markdown, bullet lists,
+    numbered lists, or symbols like asterisks or hashes — say things the way a
+    person would say them out loud.
+  - Ask one question at a time, then stop and actually wait for the answer.
+  - Keep replies brief by default — a sentence or two — unless the caller
+    clearly wants detail.
+  - Always say something. Never go silent — if you're unsure what to say,
+    say what you do know and ask a clarifying question rather than pausing.
+  - If you don't know something specific and no tool can answer it, say so
+    plainly and offer the next best step. Never invent facts, prices, names,
+    or times you don't actually have.
+  - If the caller talks over you, that's expected — let it happen naturally
+    and pick up from what they actually said.
+
+  Your job on this call:
+  - Figure out what the caller needs in the first exchange or two.
+  - Use your tools only for things you genuinely don't know (specific lookups,
+    booking actions) — you already know what Vent is, so answer that directly
+    without calling a tool.
+  - If the call is going nowhere or the caller wants a human, say so honestly
+    and let them know you'll flag it — don't stall.
 `;
 
-export const voiceTools = { lookupInfo, bookAppointment };
+/**
+ * Optional per-Twilio-number persona overrides, so different phone numbers
+ * can carry different agent personalities without a redeploy. Configure via
+ * the AGENT_PERSONAS env var — a JSON object mapping E.164 numbers to a
+ * system prompt string, e.g.:
+ *   AGENT_PERSONAS={"+15551234567": "You are a scheduling assistant for..."}
+ * Falls back to DEFAULT_PERSONA when no match is found or the env var is unset.
+ */
+function loadPersonaMap(): Record<string, string> {
+  const raw = process.env.AGENT_PERSONAS;
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed ? parsed : {};
+  } catch (err) {
+    console.error("[voice-agent] AGENT_PERSONAS is not valid JSON — ignoring", err);
+    return {};
+  }
+}
+
+const personaMap = loadPersonaMap();
+
+/** Resolve the persona for a call: explicit override > per-number config > default. */
+export function resolvePersona(explicitPersona?: string, calledNumber?: string): string {
+  const base =
+    explicitPersona ?? (calledNumber && personaMap[calledNumber]) ?? DEFAULT_PERSONA;
+  // Compliance: automatically inject the recording/AI disclosure instruction
+  // into whichever persona is active — enforced by default, not opt-in.
+  return withDisclosure(base);
+}
+
+export const voiceTools = { lookupInfo, bookAppointment, setDisposition, crmSync };
+
+// If the model produces no text at all for a turn (e.g. gets stuck only
+// calling tools, or the provider returns empty output), we still need to say
+// *something* — dead air on a live call reads as a dropped connection.
+const FALLBACK_REPLY = "Sorry, I didn't quite catch that — could you say that again?";
+
+// Hard ceiling per turn so a stuck generation can never hang the call
+// indefinitely. Twilio's own low-level timeouts would eventually kill the
+// call anyway, but we want to recover gracefully well before that happens.
+const TURN_TIMEOUT_MS = 12_000;
 
 /**
  * Runs one agent turn for a live call, streaming text deltas as they arrive so
  * the caller can hear the response as fast as possible (fed sentence-by-sentence
- * into TTS by the caller of this function).
+ * into TTS by the caller of this function). Guarantees non-empty output and a
+ * bounded turn duration — a turn that produces nothing or takes too long
+ * still ends with a spoken fallback instead of silence.
  */
-export function runVoiceAgentTurn({
+export async function runVoiceAgentTurn({
   history,
   persona,
   onTextDelta,
   onToolCall,
   signal,
+  onLatency,
+  llmProvider,
 }: {
   history: ModelMessage[];
   persona?: string;
   onTextDelta: (delta: string) => void;
   onToolCall?: (name: string, input: unknown, output: unknown) => void;
   signal?: AbortSignal;
-}) {
-  const result = streamText({
-    model: gateway(VOICE_AGENT_MODEL),
-    system: persona ?? DEFAULT_PERSONA,
-    messages: history,
-    tools: voiceTools,
-    stopWhen: stepCountIs(6),
-    abortSignal: signal,
-    onStepFinish: (step) => {
-      for (const call of step.toolCalls ?? []) {
-        const result = step.toolResults?.find((r) => r.toolCallId === call.toolCallId);
-        onToolCall?.(call.toolName, call.input, result?.output);
-      }
-    },
-  });
+  /** Reports time-to-first-token, useful for comparing LLM providers (see llm/). */
+  onLatency?: (ms: number, model: string) => void;
+  /** Per-call override of the global LLM_PROVIDER — see session-store.ts. */
+  llmProvider?: "gateway" | "groq";
+}): Promise<string> {
+  const timeoutController = new AbortController();
+  const timeout = setTimeout(() => timeoutController.abort(), TURN_TIMEOUT_MS);
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, timeoutController.signal])
+    : timeoutController.signal;
 
-  return (async () => {
+  const turnStartedAt = Date.now();
+  let firstTokenAt: number | null = null;
+
+  try {
+    const result = streamText({
+      model: resolveVoiceModel(llmProvider),
+      system: persona ?? DEFAULT_PERSONA,
+      messages: history,
+      tools: voiceTools,
+      stopWhen: stepCountIs(6),
+      abortSignal: combinedSignal,
+      onStepFinish: (step) => {
+        for (const call of step.toolCalls ?? []) {
+          const result = step.toolResults?.find((r) => r.toolCallId === call.toolCallId);
+          onToolCall?.(call.toolName, call.input, result?.output);
+        }
+      },
+    });
+
     let full = "";
     for await (const delta of result.textStream) {
+      if (firstTokenAt === null) {
+        firstTokenAt = Date.now();
+        onLatency?.(firstTokenAt - turnStartedAt, getActiveModelLabel(llmProvider));
+      }
       full += delta;
       onTextDelta(delta);
     }
+
+    // The model ran (possibly called tools) but produced no spoken text —
+    // say something rather than leaving the caller in silence.
+    if (!full.trim() && !signal?.aborted) {
+      onTextDelta(FALLBACK_REPLY);
+      return FALLBACK_REPLY;
+    }
+
     return full;
-  })();
+  } catch (err) {
+    // If we hit our own timeout (not a real barge-in abort from the caller),
+    // still give the caller something to hear instead of dead air.
+    if (timeoutController.signal.aborted && !signal?.aborted) {
+      console.warn("[voice-agent] turn exceeded timeout — using fallback reply");
+      onTextDelta(FALLBACK_REPLY);
+      return FALLBACK_REPLY;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Generates the agent's opening line the moment a call connects, so callers
+ * aren't met with silence while waiting for Deepgram to hear them speak first.
+ * Runs as a normal agent turn with an instruction to open the conversation.
+ */
+export function runVoiceAgentGreeting({
+  persona,
+  onTextDelta,
+  signal,
+}: {
+  persona?: string;
+  onTextDelta: (delta: string) => void;
+  signal?: AbortSignal;
+}) {
+  return runVoiceAgentTurn({
+    history: [
+      {
+        role: "user",
+        content: "[The call has just connected. Greet the caller briefly and ask how you can help.]",
+      },
+    ],
+    persona,
+    onTextDelta,
+    signal,
+  });
 }

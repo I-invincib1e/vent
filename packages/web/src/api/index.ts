@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { cors } from "hono/cors"
 import { voice } from "./voice/routes";
+import { resolveTtsProvider } from "./voice/tts";
+import { resolveLlmProvider, getActiveModelLabel } from "./voice/llm";
+import { isHipaaMode } from "./voice/compliance/hipaa";
+import { getRetentionDays } from "./voice/compliance/gdpr";
+import { isDisclosureEnabled } from "./voice/compliance/consent";
 
 const app = new Hono()
   .basePath('api')
@@ -13,10 +18,20 @@ const app = new Hono()
         keysConfigured: {
           deepgram: Boolean(process.env.DEEPGRAM_API_KEY),
           elevenlabs: Boolean(process.env.ELEVENLABS_API_KEY),
+          cartesia: Boolean(process.env.CARTESIA_API_KEY),
+          groq: Boolean(process.env.GROQ_API_KEY),
           twilio: Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
           publicUrl: Boolean(process.env.PUBLIC_APP_URL),
           aiGateway: Boolean(process.env.AI_GATEWAY_API_KEY),
           webhookUrl: Boolean(process.env.WEBHOOK_URL),
+        },
+        activeTtsProvider: resolveTtsProvider(),
+        activeLlmProvider: resolveLlmProvider(),
+        activeModel: getActiveModelLabel(),
+        compliance: {
+          hipaaMode: isHipaaMode(),
+          recordingDisclosureEnabled: isDisclosureEnabled(),
+          dataRetentionDays: getRetentionDays(),
         },
       },
       200,

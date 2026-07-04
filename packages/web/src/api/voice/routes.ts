@@ -5,8 +5,13 @@ import { twilioClient, getPublicUrl, getWsUrl } from "./twilio-client";
 import { sessionStore } from "./session-store";
 import { dispatchWebhook, resolveWebhookUrl } from "./webhooks";
 import { db } from "../database";
-import { calls } from "../database/schema";
+import { calls, doNotCall } from "../database/schema";
 import { eq } from "drizzle-orm";
+import { checkCallingWindow } from "./compliance/calling-window";
+import { isOnDoNotCallList, addToDoNotCallList, removeFromDoNotCallList } from "./compliance/dnc";
+import { eraseCallerData } from "./compliance/gdpr";
+import { runWorkflowForOutcome } from "./workflows/engine";
+import type { WorkflowOutcome } from "./workflows/types";
 
 export const voice = new Hono()
   // Twilio webhook — set this as the phone number's "A call comes in" Voice URL.
@@ -67,6 +72,19 @@ export const voice = new Hono()
     const from = process.env.TWILIO_PHONE_NUMBER;
     if (!from) return c.json({ error: "TWILIO_PHONE_NUMBER is not configured" }, 500);
 
+    // Compliance gates — enforced automatically, no manual step required.
+    // A call that fails either check is rejected and never dials.
+    if (await isOnDoNotCallList(to)) {
+      return c.json({ error: "This number is on the Do Not Call list — call blocked." }, 403);
+    }
+    const windowCheck = checkCallingWindow(to);
+    if (!windowCheck.allowed) {
+      return c.json(
+        { error: `Call blocked by calling-window compliance check: ${windowCheck.reason}` },
+        403,
+      );
+    }
+
     const call = await twilioClient.calls.create({
       to,
       from,
@@ -83,26 +101,56 @@ export const voice = new Hono()
   })
 
   // Twilio call status webhook — updates our call record's lifecycle status.
+  // Handles every terminal Twilio status (not just "completed") so calls that
+  // never connect — failed, busy, no-answer, canceled — don't stay stuck as
+  // "in-progress" forever, and their session state gets cleaned up too.
   .post("/status-callback", async (c) => {
     const body = await c.req.parseBody();
     const callSid = String(body.CallSid ?? "");
     const status = String(body.CallStatus ?? "");
+    const terminalStatuses = new Set(["completed", "failed", "busy", "no-answer", "canceled"]);
+    const isTerminal = terminalStatuses.has(status);
+
     if (callSid) {
       await db
         .update(calls)
         .set({
           status,
-          endedAt: status === "completed" ? new Date() : undefined,
+          endedAt: isTerminal ? new Date() : undefined,
         })
         .where(eq(calls.twilioCallSid, callSid))
         .catch(() => undefined as unknown);
 
-      if (status === "completed") {
+      if (isTerminal) {
         const session = sessionStore.get(callSid);
         void dispatchWebhook(resolveWebhookUrl(session?.webhookUrl), "call.completed", {
           callSid,
           status,
         });
+
+        // Calls that never actually connected (no-answer/busy/failed) don't
+        // go through stream.ts's disposition capture — run the workflow
+        // directly off the Twilio status so a "no-answer -> retry" workflow
+        // still fires automatically even when the media stream never opened.
+        const workflowOutcome: Record<string, string> = {
+          "no-answer": "no-answer",
+          busy: "busy",
+          failed: "failed",
+        };
+        const outcome = workflowOutcome[status];
+        if (outcome) {
+          const [row] = await db.select().from(calls).where(eq(calls.twilioCallSid, callSid)).limit(1);
+          if (row) {
+            void runWorkflowForOutcome({
+              toNumber: row.toNumber,
+              outcome: outcome as WorkflowOutcome,
+              persona: session?.persona,
+              webhookUrl: session?.webhookUrl,
+            }).catch((err) => console.error("[routes] workflow execution failed", err));
+          }
+        }
+
+        sessionStore.delete(callSid);
       }
     }
     return c.text("", 200);
@@ -143,6 +191,26 @@ export const voice = new Hono()
     return c.json({ transcript: rows }, 200);
   })
 
+  // Live call-control: current status/metadata for one call, and a force-end
+  // action for operational control mid-call.
+  .get("/calls/:id/status", async (c) => {
+    const id = Number(c.req.param("id"));
+    const [row] = await db.select().from(calls).where(eq(calls.id, id)).limit(1);
+    if (!row) return c.json({ error: "call not found" }, 404);
+    return c.json({ call: row }, 200);
+  })
+  .post("/calls/:id/end", async (c) => {
+    const id = Number(c.req.param("id"));
+    const [row] = await db.select().from(calls).where(eq(calls.id, id)).limit(1);
+    if (!row) return c.json({ error: "call not found" }, 404);
+    try {
+      await twilioClient.calls(row.twilioCallSid).update({ status: "completed" });
+    } catch (err) {
+      return c.json({ error: `Failed to end call: ${(err as Error).message}` }, 500);
+    }
+    return c.json({ ended: true, callSid: row.twilioCallSid }, 200);
+  })
+
   // Fire a sample event at a webhook URL — use this to test your n8n/Zapier
   // trigger before making a real call. Body: { url?: string } — falls back
   // to WEBHOOK_URL env var if omitted.
@@ -160,4 +228,30 @@ export const voice = new Hono()
     });
 
     return c.json({ sent: true, target }, 200);
+  })
+
+  // Compliance: Do-Not-Call list management — see voice/compliance/dnc.ts.
+  // Enforced automatically on every outbound call (POST /calls/outbound).
+  .get("/dnc", async (c) => {
+    const rows = await db.select().from(doNotCall).orderBy(doNotCall.addedAt);
+    return c.json({ doNotCall: rows }, 200);
+  })
+  .post("/dnc", async (c) => {
+    const { phoneNumber, reason } = await c.req.json<{ phoneNumber: string; reason?: string }>();
+    if (!phoneNumber) return c.json({ error: "`phoneNumber` is required" }, 400);
+    await addToDoNotCallList(phoneNumber, reason, "manual");
+    return c.json({ added: true, phoneNumber }, 201);
+  })
+  .delete("/dnc/:phoneNumber", async (c) => {
+    const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
+    await removeFromDoNotCallList(phoneNumber);
+    return c.json({ removed: true, phoneNumber }, 200);
+  })
+
+  // Compliance: GDPR right-to-erasure — deletes all call data tied to a
+  // phone number on request. See voice/compliance/gdpr.ts.
+  .delete("/callers/:phoneNumber", async (c) => {
+    const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
+    const result = await eraseCallerData(phoneNumber);
+    return c.json({ erased: true, ...result }, 200);
   });

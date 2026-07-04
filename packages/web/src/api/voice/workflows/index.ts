@@ -1,0 +1,35 @@
+import type { WorkflowConfig } from "./types";
+
+/**
+ * Loads workflow configs from the WORKFLOWS env var (a JSON array of
+ * WorkflowConfig). Keeping this env-based (vs. a dashboard/DB table) matches
+ * the rest of Vent's "code-first config, no UI required" approach — edit the
+ * env var, restart, done.
+ *
+ * Example:
+ *   WORKFLOWS=[{"name":"lead-followup","onOutcome":{
+ *     "no-answer":{"action":"retry","delayMinutes":60,"maxRetries":3},
+ *     "not-interested":{"action":"addToDnc"},
+ *     "interested":{"action":"webhook","url":"https://your-n8n/webhook/abc"}
+ *   }}]
+ */
+function loadWorkflows(): WorkflowConfig[] {
+  const raw = process.env.WORKFLOWS;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error("[workflows] WORKFLOWS env var is not valid JSON — ignoring", err);
+    return [];
+  }
+}
+
+const workflows = loadWorkflows();
+
+/** Finds the workflow(s) that apply to a given number — matches explicit numbers first, then wildcard (no `numbers` field). */
+export function getWorkflowsForNumber(toNumber: string): WorkflowConfig[] {
+  return workflows.filter((w) => !w.numbers || w.numbers.includes(toNumber));
+}
+
+export type { WorkflowConfig, WorkflowOutcome, WorkflowAction } from "./types";

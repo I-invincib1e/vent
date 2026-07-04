@@ -1,10 +1,15 @@
 import type { ModelMessage } from "ai";
 import { connectDeepgram } from "./deepgram";
-import { connectElevenLabsTts } from "./elevenlabs";
-import { runVoiceAgentTurn } from "./agent";
+import { connectTts } from "./tts";
+import type { TtsConnection } from "./tts";
+import { runVoiceAgentTurn, runVoiceAgentGreeting, resolvePersona } from "./agent";
 import { sessionStore } from "./session-store";
+import { getNumberConfig } from "./number-config";
+import { runWorkflowForOutcome } from "./workflows/engine";
+import type { WorkflowOutcome } from "./workflows/types";
 import { dispatchWebhook, resolveWebhookUrl } from "./webhooks";
 import { db } from "../database";
+import { withRetry } from "../database/with-retry";
 import { calls, transcripts, toolCalls } from "../database/schema";
 import { eq } from "drizzle-orm";
 
@@ -14,102 +19,36 @@ type TwilioEvent =
   | { event: "mark"; mark: { name: string } }
   | { event: "stop" };
 
+type Sendable = { send: (data: string) => void };
+
 /**
  * Bun WebSocket handler for a single Twilio Media Stream connection.
  * One instance of this state machine per live call.
  *
  * Flow: Twilio audio -> Deepgram STT -> LLM agent (streamed) -> ElevenLabs TTS
  * -> Twilio audio, with barge-in interrupting the agent/TTS the moment the
- * caller starts talking again.
+ * caller starts talking again. Every stage is wrapped defensively so one bad
+ * event or a dropped upstream socket can't silently hang or crash the call —
+ * worst case we log and end the call cleanly instead of leaving it stuck.
  */
 export function createVoiceStreamHandlers() {
   let streamSid: string | null = null;
   let callSid: string | null = null;
   let dbCallId: number | null = null;
   let webhookUrl: string | null = null;
+  let persona: string | undefined;
+  let ttsProviderOverride: "elevenlabs" | "cartesia" | undefined;
+  let llmProviderOverride: "gateway" | "groq" | undefined;
+  let toNumber: string | undefined;
+  let capturedDisposition: string | undefined;
   let history: ModelMessage[] = [];
+  let ended = false;
+  let maxDurationTimer: ReturnType<typeof setTimeout> | null = null;
 
   let deepgram: ReturnType<typeof connectDeepgram> | null = null;
-  let tts: ReturnType<typeof connectElevenLabsTts> | null = null;
+  let tts: TtsConnection | null = null;
   let turnAbortController: AbortController | null = null;
   let agentIsSpeaking = false;
-
-  return {
-    onOpen(ws: { send: (data: string) => void }) {
-      deepgram = connectDeepgram(async ({ text, isFinal, speechFinal }) => {
-        // Barge-in: if the agent is mid-response and the caller starts
-        // talking again, cut the agent off immediately.
-        if (agentIsSpeaking && text.trim().length > 0) {
-          if (streamSid) ws.send(JSON.stringify({ event: "clear", streamSid }));
-          turnAbortController?.abort();
-          tts?.close();
-          tts = null;
-          agentIsSpeaking = false;
-        }
-
-        if (!speechFinal || !isFinal || !text.trim()) return;
-
-        history.push({ role: "user", content: text });
-        await logTranscript("caller", text);
-        await runTurn(ws);
-      });
-    },
-
-    async onMessage(raw: string) {
-      let msg: TwilioEvent;
-      try {
-        msg = JSON.parse(raw);
-      } catch {
-        return;
-      }
-
-      if (msg.event === "start") {
-        streamSid = msg.start.streamSid;
-        callSid = msg.start.callSid;
-        const session = callSid ? sessionStore.get(callSid) : undefined;
-
-        if (callSid) {
-          const [row] = await db
-            .select()
-            .from(calls)
-            .where(eq(calls.twilioCallSid, callSid))
-            .limit(1);
-          dbCallId = row?.id ?? null;
-          webhookUrl = resolveWebhookUrl(session?.webhookUrl ?? row?.webhookUrl ?? undefined);
-        }
-
-        // Kick off the conversation with a short greeting from the agent.
-        history = [];
-        return;
-      }
-
-      if (msg.event === "media") {
-        const audio = Buffer.from(msg.media.payload, "base64");
-        deepgram?.sendAudio(audio);
-        return;
-      }
-
-      if (msg.event === "stop") {
-        deepgram?.close();
-        tts?.close();
-        turnAbortController?.abort();
-        if (callSid) {
-          await db
-            .update(calls)
-            .set({ status: "completed", endedAt: new Date() })
-            .where(eq(calls.twilioCallSid, callSid))
-            .catch(() => undefined as unknown);
-          sessionStore.delete(callSid);
-        }
-      }
-    },
-
-    onClose() {
-      deepgram?.close();
-      tts?.close();
-      turnAbortController?.abort();
-    },
-  };
 
   async function logTranscript(role: "caller" | "agent", text: string) {
     if (!dbCallId) return;
@@ -130,36 +69,87 @@ export function createVoiceStreamHandlers() {
       input,
       output,
     });
+
+    // Workflows (see ./workflows/) key off the call's disposition — capture
+    // it here when the agent calls setDisposition, then persist + trigger the
+    // matching workflow action once the call actually ends (finalizeCall).
+    if (name === "setDisposition" && input && typeof input === "object" && "disposition" in input) {
+      capturedDisposition = String((input as { disposition: unknown }).disposition);
+    }
   }
 
-  async function runTurn(ws: { send: (data: string) => void }) {
+  async function finalizeCall(status: string) {
+    if (ended) return;
+    ended = true;
+    deepgram?.close();
+    tts?.close();
+    turnAbortController?.abort();
+    if (maxDurationTimer) clearTimeout(maxDurationTimer);
+    if (callSid) {
+      await withRetry(
+        () =>
+          db
+            .update(calls)
+            .set({
+              status,
+              endedAt: new Date(),
+              ...(capturedDisposition ? { disposition: capturedDisposition } : {}),
+            })
+            .where(eq(calls.twilioCallSid, callSid!)),
+        { label: "finalize-call" },
+      );
+      sessionStore.delete(callSid);
+
+      // Workflows (see ./workflows/) run automatically off the captured
+      // disposition — no manual step required to trigger a retry/DNC-add/
+      // webhook once the agent has recorded an outcome.
+      if (capturedDisposition && toNumber) {
+        void runWorkflowForOutcome({
+          toNumber,
+          outcome: capturedDisposition as WorkflowOutcome,
+          persona,
+          webhookUrl,
+        }).catch((err) => console.error("[voice] workflow execution failed", err));
+      }
+    }
+  }
+
+  function endCallOnFatalError(ws: Sendable) {
+    try {
+      if (streamSid) ws.send(JSON.stringify({ event: "clear", streamSid }));
+    } catch {
+      // socket may already be closed — ignore
+    }
+    void finalizeCall("failed");
+  }
+
+  /** Shared turn runner — used for both the opening greeting and normal replies. */
+  async function speak(ws: Sendable, generate: (signal: AbortSignal) => Promise<string>) {
     turnAbortController = new AbortController();
     agentIsSpeaking = true;
 
-    tts = connectElevenLabsTts(
+    tts = connectTts(
       (base64Audio) => {
         if (!streamSid) return;
-        ws.send(
-          JSON.stringify({
-            event: "media",
-            streamSid,
-            media: { payload: base64Audio },
-          }),
-        );
+        try {
+          ws.send(JSON.stringify({ event: "media", streamSid, media: { payload: base64Audio } }));
+        } catch (err) {
+          console.error("[voice] failed to forward TTS audio to Twilio", err);
+        }
       },
       () => {
         agentIsSpeaking = false;
       },
+      (err) => {
+        console.error("[voice] TTS turn failed", err);
+        agentIsSpeaking = false;
+      },
+      ttsProviderOverride,
     );
 
     let fullText = "";
     try {
-      fullText = await runVoiceAgentTurn({
-        history,
-        signal: turnAbortController.signal,
-        onTextDelta: (delta) => tts?.sendText(delta),
-        onToolCall: (name, input, output) => void logToolCall(name, input, output),
-      });
+      fullText = await generate(turnAbortController.signal);
     } catch (err) {
       if ((err as Error).name !== "AbortError") console.error("[voice] agent turn failed", err);
     } finally {
@@ -171,4 +161,144 @@ export function createVoiceStreamHandlers() {
       await logTranscript("agent", fullText);
     }
   }
+
+  async function runTurn(ws: Sendable) {
+    await speak(ws, (signal) =>
+      runVoiceAgentTurn({
+        history,
+        persona,
+        signal,
+        onTextDelta: (delta) => tts?.sendText(delta),
+        onToolCall: (name, input, output) => void logToolCall(name, input, output),
+        onLatency: (ms, model) => console.log(`[voice] turn time-to-first-token: ${ms}ms (${model})`),
+        llmProvider: llmProviderOverride,
+      }),
+    );
+  }
+
+  async function runGreeting(ws: Sendable) {
+    await speak(ws, (signal) => runVoiceAgentGreeting({ persona, signal, onTextDelta: (delta) => tts?.sendText(delta) }));
+  }
+
+  return {
+    onOpen(ws: Sendable) {
+      deepgram = connectDeepgram(
+        async ({ text, isFinal, speechFinal }) => {
+          try {
+            // Barge-in: if the agent is mid-response and the caller starts
+            // talking again, cut the agent off immediately.
+            if (agentIsSpeaking && text.trim().length > 0) {
+              if (streamSid) ws.send(JSON.stringify({ event: "clear", streamSid }));
+              turnAbortController?.abort();
+              tts?.close();
+              tts = null;
+              agentIsSpeaking = false;
+            }
+
+            if (!speechFinal || !isFinal || !text.trim()) return;
+
+            history.push({ role: "user", content: text });
+            await logTranscript("caller", text);
+            await runTurn(ws);
+          } catch (err) {
+            console.error("[voice] error handling transcript event", err);
+          }
+        },
+        (err) => {
+          // Deepgram gave up reconnecting — the call can no longer hear the
+          // caller. End the call rather than leaving it hanging silently.
+          console.error("[voice] fatal Deepgram error, ending call", err);
+          endCallOnFatalError(ws);
+        },
+        (stats) => {
+          // Surface reconnect counts on the call record so a flaky call is
+          // visible in the data, not just buried in logs.
+          if (!callSid) return;
+          void withRetry(
+            () =>
+              db
+                .update(calls)
+                .set({ sttReconnectCount: stats.reconnectCount })
+                .where(eq(calls.twilioCallSid, callSid!)),
+            { label: "update-stt-stats" },
+          );
+        },
+      );
+    },
+
+    async onMessage(raw: string, ws: Sendable) {
+      let msg: TwilioEvent;
+      try {
+        msg = JSON.parse(raw);
+      } catch {
+        return;
+      }
+
+      try {
+        if (msg.event === "start") {
+          streamSid = msg.start.streamSid;
+          callSid = msg.start.callSid;
+          const session = callSid ? sessionStore.get(callSid) : undefined;
+
+          if (callSid) {
+            const [row] = await db
+              .select()
+              .from(calls)
+              .where(eq(calls.twilioCallSid, callSid))
+              .limit(1);
+            dbCallId = row?.id ?? null;
+            toNumber = row?.toNumber;
+            // Per-number config (see number-config.ts) applies to every call
+            // on that number; an explicit session override (outbound trigger,
+            // e.g. POST /calls/outbound) takes precedence when both exist.
+            const numberConfig = getNumberConfig(row?.toNumber);
+            webhookUrl = resolveWebhookUrl(session?.webhookUrl ?? numberConfig.webhookUrl ?? row?.webhookUrl ?? undefined);
+            persona = resolvePersona(
+              session?.persona ?? numberConfig.persona ?? row?.agentPersona ?? undefined,
+              row?.toNumber,
+            );
+            ttsProviderOverride = session?.ttsProvider ?? numberConfig.ttsProvider;
+            llmProviderOverride = session?.llmProvider ?? numberConfig.llmProvider;
+
+            // Control: optional hard cap on call length (per-call override or
+            // per-number config).
+            const maxDurationSeconds = session?.maxDurationSeconds ?? numberConfig.maxDurationSeconds;
+            if (maxDurationSeconds) {
+              maxDurationTimer = setTimeout(() => {
+                console.warn(`[voice] call ${callSid} hit its max duration — ending`);
+                void finalizeCall("completed");
+                try {
+                  ws.send(JSON.stringify({ event: "clear", streamSid }));
+                } catch {
+                  // socket may already be closed — ignore
+                }
+              }, maxDurationSeconds * 1000);
+            }
+          }
+
+          history = [];
+          await runGreeting(ws);
+          return;
+        }
+
+        if (msg.event === "media") {
+          const audio = Buffer.from(msg.media.payload, "base64");
+          deepgram?.sendAudio(audio);
+          return;
+        }
+
+        if (msg.event === "stop") {
+          await finalizeCall("completed");
+        }
+      } catch (err) {
+        console.error("[voice] error handling Twilio event", msg.event, err);
+      }
+    },
+
+    onClose() {
+      void finalizeCall("completed").catch((err) =>
+        console.error("[voice] error finalizing call on close", err),
+      );
+    },
+  };
 }

@@ -28,9 +28,9 @@ export const voiceWebsocketHandlers = {
   open(ws: { send: (data: string) => void; data: VoiceSocketData }) {
     ws.data.handlers.onOpen(ws);
   },
-  message(ws: { data: VoiceSocketData }, message: string | Buffer) {
+  message(ws: { data: VoiceSocketData; send: (data: string) => void }, message: string | Buffer) {
     const data = typeof message === "string" ? message : message.toString();
-    void ws.data.handlers.onMessage(data);
+    void ws.data.handlers.onMessage(data, ws);
   },
   close(ws: { data: VoiceSocketData }) {
     ws.data.handlers.onClose();

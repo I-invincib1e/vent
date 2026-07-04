@@ -1,5 +1,36 @@
 import app from "./api";
 import { tryUpgradeVoiceSocket, voiceWebsocketHandlers } from "./api/voice/ws-route";
+import { assertHipaaPreflight } from "./api/voice/compliance/hipaa";
+import { startRetentionSweep } from "./api/voice/compliance/gdpr";
+import { assertVoiceConfig } from "./api/voice/config-check";
+import { startScheduledCallSweep } from "./api/voice/workflows/scheduler";
+
+// Surface any otherwise-silent crash (e.g. an unawaited rejection deep in the
+// voice pipeline) in the process logs instead of letting PM2 restart the
+// server with no explanation.
+process.on("unhandledRejection", (reason) => {
+  console.error("[server] Unhandled rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[server] Uncaught exception:", err);
+});
+
+// Compliance boot checks — fail fast and loud rather than silently running
+// in a state the operator didn't actually confirm (see compliance/hipaa.ts).
+assertHipaaPreflight();
+
+// Config validation — logs loudly (doesn't crash) if the active providers are
+// missing required keys, so the gap is visible at boot instead of only
+// surfacing mid-call.
+assertVoiceConfig();
+
+// GDPR: automatic retention purge — runs on boot and then daily. No manual
+// cleanup step required (see compliance/gdpr.ts).
+startRetentionSweep();
+
+// Workflows: executes due scheduled retry calls automatically (see
+// workflows/scheduler.ts).
+startScheduledCallSweep();
 
 const port = Number(process.env.PORT ?? 3000);
 const distDir = `${import.meta.dir}/../dist`;
