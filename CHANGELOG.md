@@ -3,6 +3,22 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-04 (research: CAI market landscape + orchestration framework evaluation)
+
+### Research / Decisions (no code changes)
+- Completed a competitive research pass on the Conversational AI / voice-agent market (AI-native platforms,
+  hyperscaler CCAI offerings, CRM-embedded voice AI, legacy CCaaS incumbents) — see the delivered market
+  report for the full comparison matrix and compliance benchmark. Key finding: every serious AI-native
+  competitor (ElevenLabs Agents, Vapi, Retell AI, Bland AI, Synthflow) already ships SOC 2 + HIPAA (several
+  with GDPR/PCI-DSS/ISO27001); Vent's current HIPAA support is a boot-time guardrail, not a certification.
+- Evaluated adopting an open-source orchestration framework (Pipecat, LiveKit Agents, TEN Framework,
+  Vocode) instead of maintaining Vent's own STT→LLM→TTS pipeline. Investigated LiveKit Agents specifically
+  (TypeScript SDK, documented Twilio integration) and ultimately **rejected it** — both its Cloud and
+  self-hosted deployment options reintroduce vendor/infrastructure dependencies Vent is built to remove,
+  and its WebRTC/SIP telephony model is architecturally mismatched with Vent's existing Twilio Media
+  Streams (WebSocket) integration. See `DECISIONS.md` ADR-009 for the full reasoning. No code was changed
+  as part of this evaluation — Vent's existing direct pipeline continues unmodified.
+
 ## [Unreleased] — 2026-07-04 (v2: compliance, providers, control, workflows)
 
 ### Added
