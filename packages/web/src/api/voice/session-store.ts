@@ -21,6 +21,10 @@ export type CallSession = {
   ttsProvider?: "elevenlabs" | "cartesia";
   llmProvider?: "gateway" | "groq";
   maxDurationSeconds?: number;
+  /** Set when this call was placed by the workflow scheduler (a retry) — lets the
+   * workflow engine enforce maxRetries instead of retrying forever. */
+  workflowName?: string;
+  workflowAttempt?: number;
 };
 
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour

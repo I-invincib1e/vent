@@ -5,6 +5,7 @@ import { createMemoryDncAdapter, createMemoryCallLogAdapter } from "./adapters/m
 import { withDisclosure, isDisclosureEnabled } from "./consent";
 import { isHipaaMode, assertHipaaPreflight } from "./hipaa";
 import { purgeExpiredData, eraseCallerData, getRetentionDays } from "./gdpr";
+import { syncNationalDncRegistry, noopNationalRegistryFetcher } from "./national-dnc";
 
 describe("calling-window", () => {
   it("allows a call within the resolved window for a known area code", () => {
@@ -109,5 +110,24 @@ describe("gdpr (memory adapter)", () => {
 
   it("defaults retention to 90 days", () => {
     expect(getRetentionDays()).toBe(90);
+  });
+});
+
+describe("national-dnc", () => {
+  it("noop fetcher syncs zero numbers without erroring", async () => {
+    const dnc = createMemoryDncAdapter();
+    const result = await syncNationalDncRegistry(dnc, noopNationalRegistryFetcher);
+    expect(result.numbersSynced).toBe(0);
+  });
+
+  it("syncs a real fetcher's numbers into the DNC list with the correct source", async () => {
+    const dnc = createMemoryDncAdapter();
+    const fetcher = { fetchRegisteredNumbers: async () => ["+15551110000", "+15551110001"] };
+    const result = await syncNationalDncRegistry(dnc, fetcher);
+    expect(result.numbersSynced).toBe(2);
+
+    const list = await dnc.list();
+    expect(list.length).toBe(2);
+    expect(list.every((entry) => entry.source === "national-registry")).toBe(true);
   });
 });

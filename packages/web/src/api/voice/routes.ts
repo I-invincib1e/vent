@@ -17,12 +17,17 @@ import {
 import { dncAdapter, callLogAdapter } from "./compliance/adapters";
 import { runWorkflowForOutcome } from "./workflows/engine";
 import type { WorkflowOutcome } from "./workflows/types";
+import { requireAdminKey } from "./middleware/admin-auth";
+import { requireTwilioSignature } from "./middleware/twilio-signature";
+import { rateLimitOutboundCalls } from "./middleware/rate-limit";
+import { isValidE164 } from "./validation";
 
 export const voice = new Hono()
   // Twilio webhook — set this as the phone number's "A call comes in" Voice URL.
   // Also reused as the TwiML endpoint for outbound calls we place ourselves.
-  .post("/incoming", async (c) => {
-    const body = await c.req.parseBody();
+  // Signature-validated: only genuine Twilio requests are accepted.
+  .post("/incoming", requireTwilioSignature, async (c) => {
+    const body = c.get("twilioBody");
     const callSid = String(body.CallSid ?? "");
     const from = String(body.From ?? "");
     const to = String(body.To ?? "");
@@ -66,13 +71,16 @@ export const voice = new Hono()
   // Trigger an outbound call. Body: { to, persona?, webhookUrl? }
   // `webhookUrl` overrides the WEBHOOK_URL env default for this call only —
   // handy for routing different call flows to different n8n/Zapier hooks.
-  .post("/calls/outbound", async (c) => {
-    const { to, persona, webhookUrl } = await c.req.json<{
-      to: string;
-      persona?: string;
-      webhookUrl?: string;
-    }>();
+  .post("/calls/outbound", requireAdminKey, rateLimitOutboundCalls, async (c) => {
+    const parsed = await c.req.json().catch(() => null);
+    if (!parsed || typeof parsed !== "object") {
+      return c.json({ error: "Invalid or missing JSON request body" }, 400);
+    }
+    const { to, persona, webhookUrl } = parsed as { to?: string; persona?: string; webhookUrl?: string };
     if (!to) return c.json({ error: "`to` is required" }, 400);
+    if (!isValidE164(to)) {
+      return c.json({ error: "`to` must be a valid E.164 phone number, e.g. +15551234567" }, 400);
+    }
 
     const from = process.env.TWILIO_PHONE_NUMBER;
     if (!from) return c.json({ error: "TWILIO_PHONE_NUMBER is not configured" }, 500);
@@ -104,8 +112,8 @@ export const voice = new Hono()
   // Handles every terminal Twilio status (not just "completed") so calls that
   // never connect — failed, busy, no-answer, canceled — don't stay stuck as
   // "in-progress" forever, and their session state gets cleaned up too.
-  .post("/status-callback", async (c) => {
-    const body = await c.req.parseBody();
+  .post("/status-callback", requireTwilioSignature, async (c) => {
+    const body = c.get("twilioBody");
     const callSid = String(body.CallSid ?? "");
     const status = String(body.CallStatus ?? "");
     const terminalStatuses = new Set(["completed", "failed", "busy", "no-answer", "canceled"]);
@@ -146,6 +154,7 @@ export const voice = new Hono()
               outcome: outcome as WorkflowOutcome,
               persona: session?.persona,
               webhookUrl: session?.webhookUrl,
+              previousAttempt: session?.workflowAttempt,
             }).catch((err) => console.error("[routes] workflow execution failed", err));
           }
         }
@@ -157,8 +166,8 @@ export const voice = new Hono()
   })
 
   // Twilio recording webhook — stores the recording URL once available.
-  .post("/recording-status", async (c) => {
-    const body = await c.req.parseBody();
+  .post("/recording-status", requireTwilioSignature, async (c) => {
+    const body = c.get("twilioBody");
     const callSid = String(body.CallSid ?? "");
     const recordingUrl = String(body.RecordingUrl ?? "");
     if (callSid && recordingUrl) {
@@ -179,12 +188,12 @@ export const voice = new Hono()
   })
 
   // Ops endpoints — no dashboard, just JSON for curl/Postman.
-  .get("/calls", async (c) => {
+  .get("/calls", requireAdminKey, async (c) => {
     const rows = await db.select().from(calls).orderBy(calls.startedAt);
     return c.json({ calls: rows }, 200);
   })
 
-  .get("/calls/:id/transcript", async (c) => {
+  .get("/calls/:id/transcript", requireAdminKey, async (c) => {
     const id = Number(c.req.param("id"));
     const { transcripts } = await import("../database/schema");
     const rows = await db.select().from(transcripts).where(eq(transcripts.callId, id));
@@ -193,13 +202,13 @@ export const voice = new Hono()
 
   // Live call-control: current status/metadata for one call, and a force-end
   // action for operational control mid-call.
-  .get("/calls/:id/status", async (c) => {
+  .get("/calls/:id/status", requireAdminKey, async (c) => {
     const id = Number(c.req.param("id"));
     const [row] = await db.select().from(calls).where(eq(calls.id, id)).limit(1);
     if (!row) return c.json({ error: "call not found" }, 404);
     return c.json({ call: row }, 200);
   })
-  .post("/calls/:id/end", async (c) => {
+  .post("/calls/:id/end", requireAdminKey, async (c) => {
     const id = Number(c.req.param("id"));
     const [row] = await db.select().from(calls).where(eq(calls.id, id)).limit(1);
     if (!row) return c.json({ error: "call not found" }, 404);
@@ -214,7 +223,7 @@ export const voice = new Hono()
   // Fire a sample event at a webhook URL — use this to test your n8n/Zapier
   // trigger before making a real call. Body: { url?: string } — falls back
   // to WEBHOOK_URL env var if omitted.
-  .post("/webhooks/test", async (c) => {
+  .post("/webhooks/test", requireAdminKey, async (c) => {
     const body = await c.req.json<{ url?: string }>().catch(() => ({}) as { url?: string });
     const target = resolveWebhookUrl(body.url);
     if (!target) return c.json({ error: "No webhook URL provided and WEBHOOK_URL is not set" }, 400);
@@ -232,17 +241,24 @@ export const voice = new Hono()
 
   // Compliance: Do-Not-Call list management — enforced automatically on
   // every outbound call (POST /calls/outbound) via @vent/compliance.
-  .get("/dnc", async (c) => {
+  .get("/dnc", requireAdminKey, async (c) => {
     const rows = await listDoNotCall(dncAdapter);
     return c.json({ doNotCall: rows }, 200);
   })
-  .post("/dnc", async (c) => {
-    const { phoneNumber, reason } = await c.req.json<{ phoneNumber: string; reason?: string }>();
+  .post("/dnc", requireAdminKey, async (c) => {
+    const parsed = await c.req.json().catch(() => null);
+    if (!parsed || typeof parsed !== "object") {
+      return c.json({ error: "Invalid or missing JSON request body" }, 400);
+    }
+    const { phoneNumber, reason } = parsed as { phoneNumber?: string; reason?: string };
     if (!phoneNumber) return c.json({ error: "`phoneNumber` is required" }, 400);
+    if (!isValidE164(phoneNumber)) {
+      return c.json({ error: "`phoneNumber` must be a valid E.164 phone number, e.g. +15551234567" }, 400);
+    }
     await addToDoNotCallList(dncAdapter, phoneNumber, reason, "manual");
     return c.json({ added: true, phoneNumber }, 201);
   })
-  .delete("/dnc/:phoneNumber", async (c) => {
+  .delete("/dnc/:phoneNumber", requireAdminKey, async (c) => {
     const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
     await removeFromDoNotCallList(dncAdapter, phoneNumber);
     return c.json({ removed: true, phoneNumber }, 200);
@@ -250,7 +266,7 @@ export const voice = new Hono()
 
   // Compliance: GDPR right-to-erasure — deletes all call data tied to a
   // phone number on request, via @vent/compliance.
-  .delete("/callers/:phoneNumber", async (c) => {
+  .delete("/callers/:phoneNumber", requireAdminKey, async (c) => {
     const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
     const result = await eraseCallerData(callLogAdapter, phoneNumber);
     return c.json({ erased: true, ...result }, 200);

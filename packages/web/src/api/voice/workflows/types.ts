@@ -20,7 +20,7 @@ export type WorkflowAction =
   | { action: "retry"; delayMinutes: number; maxRetries: number }
   | { action: "webhook"; url: string }
   | { action: "addToDnc" }
-  | { action: "sendSms"; template: string } // stub — logs only, no SMS provider wired yet
+  | { action: "sendSms"; template: string } // sends via Twilio Messaging using TWILIO_PHONE_NUMBER as sender
   | { action: "none" };
 
 export type WorkflowConfig = {

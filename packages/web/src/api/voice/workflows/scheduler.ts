@@ -21,6 +21,18 @@ async function executeDueScheduledCalls() {
     .where(and(eq(scheduledCalls.status, "pending"), lte(scheduledCalls.runAt, new Date())));
 
   for (const row of due) {
+    // Claim the row atomically before doing any work — if a previous sweep
+    // (e.g. one still awaiting a slow Twilio call) hasn't finished and this
+    // sweep starts concurrently, only one of them can flip "pending" ->
+    // "claimed" and win the race. Prevents the same scheduled call from
+    // being dialed twice.
+    const claimed = await db
+      .update(scheduledCalls)
+      .set({ status: "claimed" })
+      .where(and(eq(scheduledCalls.id, row.id), eq(scheduledCalls.status, "pending")))
+      .returning({ id: scheduledCalls.id });
+    if (claimed.length === 0) continue; // another sweep already claimed it
+
     try {
       if (await isOnDoNotCallList(dncAdapter, row.toNumber)) {
         console.warn(`[scheduler] skipping scheduled call to ${row.toNumber} — on DNC list`);
@@ -30,10 +42,11 @@ async function executeDueScheduledCalls() {
       const windowCheck = checkCallingWindow(row.toNumber);
       if (!windowCheck.allowed) {
         // Push it out another 30 minutes rather than dropping it — the
-        // window will open eventually.
+        // window will open eventually. Release the claim back to "pending"
+        // so a future sweep can pick it up again.
         await db
           .update(scheduledCalls)
-          .set({ runAt: new Date(Date.now() + 30 * 60 * 1000) })
+          .set({ runAt: new Date(Date.now() + 30 * 60 * 1000), status: "pending" })
           .where(eq(scheduledCalls.id, row.id));
         continue;
       }
@@ -59,6 +72,8 @@ async function executeDueScheduledCalls() {
         direction: "outbound",
         persona: row.persona ?? undefined,
         webhookUrl: row.webhookUrl ?? undefined,
+        workflowName: row.workflowName,
+        workflowAttempt: row.attempt,
       });
 
       console.log(`[scheduler] executed scheduled call to ${row.toNumber} (workflow: ${row.workflowName})`);

@@ -73,7 +73,7 @@ export const scheduledCalls = sqliteTable("scheduled_calls", {
   attempt: integer("attempt").notNull().default(1),
   maxAttempts: integer("max_attempts").notNull().default(1),
   runAt: integer("run_at", { mode: "timestamp" }).notNull(),
-  status: text("status", { enum: ["pending", "executed", "canceled", "failed"] })
+  status: text("status", { enum: ["pending", "claimed", "executed", "canceled", "failed"] })
     .notNull()
     .default("pending"),
   createdAt: integer("created_at", { mode: "timestamp" })

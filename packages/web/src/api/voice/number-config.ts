@@ -15,8 +15,8 @@ export type NumberConfig = {
   webhookUrl?: string;
 };
 
-function loadNumberConfigMap(): Record<string, NumberConfig> {
-  const raw = process.env.NUMBER_CONFIG;
+/** Pure parser, exported for testing — takes the raw env string directly instead of reading process.env. */
+export function parseNumberConfigMap(raw: string | undefined): Record<string, NumberConfig> {
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
@@ -27,7 +27,7 @@ function loadNumberConfigMap(): Record<string, NumberConfig> {
   }
 }
 
-const numberConfigMap = loadNumberConfigMap();
+const numberConfigMap = parseNumberConfigMap(process.env.NUMBER_CONFIG);
 
 export function getNumberConfig(number?: string): NumberConfig {
   if (!number) return {};

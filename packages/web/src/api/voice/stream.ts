@@ -86,6 +86,8 @@ export function createVoiceStreamHandlers() {
     turnAbortController?.abort();
     if (maxDurationTimer) clearTimeout(maxDurationTimer);
     if (callSid) {
+      const previousAttempt = sessionStore.get(callSid)?.workflowAttempt;
+
       await withRetry(
         () =>
           db
@@ -109,6 +111,7 @@ export function createVoiceStreamHandlers() {
           outcome: capturedDisposition as WorkflowOutcome,
           persona,
           webhookUrl,
+          previousAttempt,
         }).catch((err) => console.error("[voice] workflow execution failed", err));
       }
     }

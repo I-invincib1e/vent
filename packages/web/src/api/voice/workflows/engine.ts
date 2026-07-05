@@ -3,6 +3,8 @@ import { scheduledCalls } from "../../database/schema";
 import { addToDoNotCallList } from "@vent/compliance";
 import { dncAdapter } from "../compliance/adapters";
 import { dispatchWebhook, resolveWebhookUrl } from "../webhooks";
+import { twilioClient } from "../twilio-client";
+import { isValidE164 } from "../validation";
 import { getWorkflowsForNumber } from "./index";
 import type { WorkflowOutcome } from "./types";
 
@@ -19,8 +21,10 @@ export async function runWorkflowForOutcome(params: {
   outcome: WorkflowOutcome;
   persona?: string;
   webhookUrl?: string | null;
+  /** Set when this call was itself a scheduled retry — lets maxRetries be enforced across the chain. */
+  previousAttempt?: number;
 }) {
-  const { toNumber, outcome, persona, webhookUrl } = params;
+  const { toNumber, outcome, persona, webhookUrl, previousAttempt } = params;
   const matches = getWorkflowsForNumber(toNumber);
 
   for (const workflow of matches) {
@@ -30,18 +34,25 @@ export async function runWorkflowForOutcome(params: {
     try {
       switch (action.action) {
         case "retry": {
+          const nextAttempt = (previousAttempt ?? 0) + 1;
+          if (nextAttempt > action.maxRetries) {
+            console.log(
+              `[workflow:${workflow.name}] retry limit reached for ${toNumber} (${nextAttempt - 1}/${action.maxRetries}) — not scheduling another`,
+            );
+            break;
+          }
           await db.insert(scheduledCalls).values({
             toNumber,
             workflowName: workflow.name,
             persona,
             webhookUrl: webhookUrl ?? undefined,
-            attempt: 1,
+            attempt: nextAttempt,
             maxAttempts: action.maxRetries,
             runAt: new Date(Date.now() + action.delayMinutes * 60 * 1000),
             status: "pending",
           });
           console.log(
-            `[workflow:${workflow.name}] scheduled retry for ${toNumber} in ${action.delayMinutes}min`,
+            `[workflow:${workflow.name}] scheduled retry ${nextAttempt}/${action.maxRetries} for ${toNumber} in ${action.delayMinutes}min`,
           );
           break;
         }
@@ -59,9 +70,21 @@ export async function runWorkflowForOutcome(params: {
           break;
         }
         case "sendSms": {
-          // Stub — no SMS provider wired yet. Logs the intent so the action
-          // is visible and easy to wire to Twilio Messaging later.
-          console.log(`[workflow:${workflow.name}] (stub) would send SMS to ${toNumber}: "${action.template}"`);
+          const from = process.env.TWILIO_PHONE_NUMBER;
+          if (!from) {
+            console.error(`[workflow:${workflow.name}] cannot send SMS — TWILIO_PHONE_NUMBER is not configured`);
+            break;
+          }
+          if (!isValidE164(toNumber)) {
+            console.error(`[workflow:${workflow.name}] cannot send SMS — invalid destination number ${toNumber}`);
+            break;
+          }
+          try {
+            await twilioClient.messages.create({ to: toNumber, from, body: action.template });
+            console.log(`[workflow:${workflow.name}] sent SMS to ${toNumber}`);
+          } catch (err) {
+            console.error(`[workflow:${workflow.name}] failed to send SMS to ${toNumber}`, err);
+          }
           break;
         }
       }

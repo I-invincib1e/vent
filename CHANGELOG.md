@@ -3,6 +3,53 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (v1.3 hardening: auth, signature validation, retry-cap fix, rate limiting)
+
+### Added
+- Admin-key auth (`requireAdminKey` middleware, `packages/web/src/api/voice/middleware/admin-auth.ts`) on
+  all ops endpoints (`/calls`, `/dnc`, `/callers`, `/webhooks/test`) — checks `X-Vent-Admin-Key` header
+  against `ADMIN_API_KEY`. Warns loudly at startup if unset instead of crashing (unauthenticated mode is
+  fine for local dev, not for anything public).
+- Twilio signature validation (`requireTwilioSignature` middleware,
+  `packages/web/src/api/voice/middleware/twilio-signature.ts`) on `/incoming`, `/status-callback`, and
+  `/recording-status` — rejects any webhook request that doesn't carry a valid `X-Twilio-Signature` with a
+  `403`, closing off forged-webhook attacks (e.g. a fake "not-interested" outcome auto-adding a number to
+  DNC).
+- E.164 phone number validation (`packages/web/src/api/voice/validation.ts`, `isValidE164`) on
+  `POST /calls/outbound` and `POST /dnc` — malformed numbers now return `400` instead of failing deeper in
+  the pipeline (or silently misbehaving with Twilio).
+- Outbound call rate limiting (`rateLimitOutboundCalls` middleware,
+  `packages/web/src/api/voice/middleware/rate-limit.ts`) — fixed-window guard, `OUTBOUND_CALL_RATE_LIMIT`
+  (default 30) per `OUTBOUND_CALL_RATE_WINDOW_MS` (default 60000ms). Additive to, not a replacement for,
+  the DNC/calling-window compliance checks.
+- National DNC registry adapter shape (`packages/vent-compliance/src/national-dnc.ts`) —
+  `syncNationalDncRegistry`, `NationalRegistryFetcher` type, and `noopNationalRegistryFetcher`. Documented
+  stub only; no live registry sync (would require a real SAN, which can't be provisioned in this sandbox).
+- Tunnel supervisor script (`scripts/tunnel-supervisor.sh`) — monitors the `cloudflared` quick-tunnel
+  process, restarts it on crash, and auto-updates `PUBLIC_APP_URL` plus the Twilio number's Voice webhook
+  whenever the tunnel URL changes. Documented as a mitigation for local/dev use, not a substitute for a
+  named tunnel or persistent domain (see ADR-008).
+- Test coverage: 12 new tests across `validation`, `number-config`, `session-store`,
+  `llm/index`, `tts/index`, `workflows/index` (web app, now 25 total), plus 2 new tests in
+  `vent-compliance` for the national DNC adapter (now 15 total). 40 tests passing across both packages.
+
+### Fixed
+- **Real SMS delivery.** `sendSms` in `workflows/engine.ts` now calls `twilioClient.messages.create()` —
+  previously a stub that only logged and never actually sent anything.
+- **Retry cap enforcement.** Workflow actions define `maxRetries`, but nothing ever enforced it —
+  `runWorkflowForOutcome` now takes a `previousAttempt` param, computes `nextAttempt`, and refuses to
+  schedule another retry once `nextAttempt > maxRetries`. Previously a misconfigured or endlessly-failing
+  workflow could re-dial a number forever.
+- **Scheduler double-execution.** `scheduler.ts` now does an atomic claim (`pending` → `claimed` via a
+  conditional `UPDATE ... RETURNING`) before executing a scheduled call, preventing two scheduler ticks
+  from picking up and running the same row. Rows deferred by the calling-window check are correctly reset
+  back to `"pending"` (previously they got stuck at `"claimed"` forever — a second bug fixed in the same
+  pass).
+
+### Changed
+- `scheduledCalls.status` enum (`packages/web/src/api/database/schema.ts`) extended with `"claimed"` — a
+  SQLite text column, so no migration was required (`db:push` confirms "No changes detected").
+
 ## [Unreleased] — 2026-07-05 (compliance layer extracted into a standalone package)
 
 ### Added

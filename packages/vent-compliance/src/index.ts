@@ -9,6 +9,7 @@ export * from "./hipaa";
 export * from "./gdpr";
 export * from "./storage";
 export * from "./adapters/memory";
+export * from "./national-dnc";
 
 export type OutboundComplianceResult =
   | { allowed: true }
