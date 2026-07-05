@@ -3,6 +3,7 @@ import { Problem } from "../components/landing/problem";
 import { Pipeline } from "../components/landing/pipeline";
 import { Features } from "../components/landing/features";
 import { CodePreview } from "../components/landing/code-preview";
+import { ProductTour } from "../components/landing/product-tour";
 import { Stack } from "../components/landing/stack";
 import { CtaFooter } from "../components/landing/cta-footer";
 
@@ -15,6 +16,7 @@ function Index() {
       <Pipeline />
       <Features />
       <CodePreview />
+      <ProductTour />
       <CtaFooter />
     </div>
   );

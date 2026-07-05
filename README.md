@@ -271,6 +271,36 @@ Tools live in `packages/web/src/api/voice/tools/`:
 - `bookAppointment` — books a caller in (stub — wire to a real calendar)
 - `setDisposition` — records how a call ended; drives the workflow engine
 - `crmSync` — upserts a contact + logs a call engagement to HubSpot (stub — set `HUBSPOT_API_KEY`)
+- `captureField` — records a durable fact (email, order ID, name, etc.) as structured state — see
+  [State engine](#state-engine) below
+
+## State engine
+
+Most voice-agent stacks treat the transcript itself as memory — which means once something a caller said
+scrolls outside whatever the model actually attends to, the agent re-asks for it or contradicts an earlier
+answer. Vent keeps a separate, deterministic state layer instead:
+
+- The agent calls `captureField` the moment a caller states something durable — an email, an order ID, a
+  name — recording it as a `{ field, value }` pair, not free text.
+- That state (`calls.capturedState`) is persisted immediately (not just at call end) and re-injected into
+  the system prompt every turn as an explicit "Known facts — do not ask for these again" block.
+- The result: the model reads ground truth instead of re-deriving it from scrollback, and every fact is
+  inspectable afterward — on the dashboard (below) or via `GET /api/voice/calls/:id`.
+
+See [ADR-012](./DECISIONS.md) for the full reasoning.
+
+## Dashboard
+
+A small operator dashboard ships at `/dashboard`, gated behind your `ADMIN_API_KEY` (entered once per
+browser session, never sent anywhere but your own server):
+
+- **Calls** — live/completed calls, auto-refreshing, with a quick indicator of how many facts were
+  captured per call
+- **Call detail** — full transcript, tool-call log, recording link, and the captured-state panel
+- **Do Not Call** — add/remove DNC entries without touching curl
+
+This is meant for you, the operator, not end users — there's no multi-tenant login, just the same admin
+key that already gates the ops API.
 
 ## Per-number configuration
 
@@ -283,12 +313,16 @@ Different Twilio numbers can run different behavior without touching code, via `
 
 - The live call audio path (WebSocket bridge) only works under the production Bun server
   (`bun run start`), not Vite's dev server.
-- Session state (persona, provider overrides) is stored in-memory per call — fine for a single instance,
-  swap for Redis/DB-backed storage to scale horizontally.
-- Ops endpoints (`/calls`, `/dnc`, `/calls/:id/end`, etc.) currently have **no authentication** — add an
-  API-key check before exposing this beyond local testing.
-- National DNC Registry sync is not built (no free API exists) — only the internal list is enforced today.
-- The `sendSms` workflow action is a stub (logs only) — no SMS provider wired yet.
+- Session state (persona, provider overrides, captured facts) is stored in-memory per call and persisted
+  to SQLite — fine for a single instance, swap for Redis/DB-backed session storage to scale horizontally.
+- National DNC Registry sync ships as an adapter shape only (`packages/vent-compliance/src/national-dnc.ts`)
+  — the real US registry requires a paid Subscription Account Number (SAN); only your own internal DNC
+  list is enforced automatically today.
+- `captureField` has no per-persona required-slot schema — the model decides what's worth capturing based
+  on the tool description, not a strict checklist. Fine for most use cases; a stricter mode (e.g.
+  "must capture email before ending this call") isn't built yet.
+- The dashboard's admin-key gate is a single shared key, not per-user auth — fine for a solo operator, not
+  a multi-tenant login system.
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for the full history and [`DECISIONS.md`](./DECISIONS.md) for the
 reasoning behind these choices.

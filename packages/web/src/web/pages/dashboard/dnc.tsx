@@ -1,0 +1,120 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ShieldOff, Trash2, Plus } from "lucide-react";
+import { api } from "../../lib/api";
+import { adminHeaders } from "../../lib/admin-key";
+
+export function DncPage() {
+  const queryClient = useQueryClient();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const list = useQuery({
+    queryKey: ["dnc"],
+    queryFn: async () => {
+      const res = await api.voice.dnc.$get({}, { headers: adminHeaders() });
+      return res.json();
+    },
+  });
+
+  const add = useMutation({
+    mutationFn: async () => {
+      const res = await api.voice.dnc.$post(
+        { json: { phoneNumber, reason: reason || undefined } },
+        { headers: adminHeaders() },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}) as { error?: string });
+        throw new Error(body.error ?? `Failed (${res.status})`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setPhoneNumber("");
+      setReason("");
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["dnc"] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (phone: string) => {
+      await api.voice.dnc[":phoneNumber"].$delete(
+        { param: { phoneNumber: encodeURIComponent(phone) } },
+        { headers: adminHeaders() },
+      );
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dnc"] }),
+  });
+
+  return (
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold font-[family-name:var(--font-display)] flex items-center gap-2">
+          <ShieldOff className="size-5 text-ember" />
+          Do Not Call list
+        </h1>
+        <p className="text-sm text-ink-soft mt-1 max-w-xl">
+          Checked automatically before every outbound call via <code className="font-mono text-xs">@vent/compliance</code>.
+          Numbers land here manually (below) or automatically when the agent records a "not-interested" disposition.
+        </p>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          add.mutate();
+        }}
+        className="flex flex-col sm:flex-row gap-2 mb-8"
+      >
+        <input
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="+15551234567"
+          className="flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-ember/40"
+        />
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason (optional)"
+          className="flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ember/40"
+        />
+        <button
+          type="submit"
+          disabled={!phoneNumber || add.isPending}
+          className="inline-flex items-center gap-1.5 justify-center rounded-md bg-ember text-paper px-4 py-2 text-sm font-medium hover:bg-ember/90 transition-colors disabled:opacity-50"
+        >
+          <Plus className="size-4" />
+          Add
+        </button>
+      </form>
+      {error && <p className="text-sm text-destructive -mt-6 mb-6">{error}</p>}
+
+      <div className="rounded-lg border border-border divide-y divide-border">
+        {(list.data?.doNotCall ?? []).map((entry) => (
+          <div key={entry.id} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <div className="font-mono text-sm">{entry.phoneNumber}</div>
+              <div className="text-xs text-ink-soft mt-0.5">
+                {entry.source}
+                {entry.reason ? ` · ${entry.reason}` : ""}
+              </div>
+            </div>
+            <button
+              onClick={() => remove.mutate(entry.phoneNumber)}
+              className="text-ink-soft hover:text-destructive transition-colors p-1.5"
+              aria-label="Remove from list"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        ))}
+        {list.data?.doNotCall?.length === 0 && (
+          <div className="px-4 py-8 text-sm text-ink-soft text-center">No numbers on the list.</div>
+        )}
+      </div>
+    </div>
+  );
+}

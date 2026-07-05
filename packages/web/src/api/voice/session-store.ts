@@ -25,6 +25,15 @@ export type CallSession = {
    * workflow engine enforce maxRetries instead of retrying forever. */
   workflowName?: string;
   workflowAttempt?: number;
+  /**
+   * Structured, deterministic call state — facts captured via the
+   * `captureField` tool during this call (email, order ID, name, etc).
+   * This is read back into the system prompt every turn as ground truth
+   * (see agent.ts) and persisted to `calls.capturedState` on each update
+   * and at call end. Mirrors, and is the in-memory source of truth for,
+   * the DB column — see ADR-012.
+   */
+  capturedState?: Record<string, string>;
 };
 
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour

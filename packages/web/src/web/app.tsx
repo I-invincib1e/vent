@@ -2,14 +2,36 @@
    import Index from "./pages/index";                                                                                     
    import DocsPage from "./pages/docs";                                                                                   
    import { Provider } from "./components/provider";                                                                      
-   import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";                                                                            
-                                                                                                                          
+   import { AgentFeedback, RunableBadge } from "@runablehq/website-runtime";
+   import { AdminKeyGate } from "./components/dashboard/admin-key-gate";
+   import { DashboardShell } from "./components/dashboard/dashboard-shell";
+   import { CallsListPage } from "./pages/dashboard/calls-list";
+   import { CallDetailPage } from "./pages/dashboard/call-detail";
+   import { DncPage } from "./pages/dashboard/dnc";
+
+   function Dashboard({ children }: { children: React.ReactNode }) {
+     return (
+       <AdminKeyGate>
+         <DashboardShell>{children}</DashboardShell>
+       </AdminKeyGate>
+     );
+   }
+
    function App() {                                                                                                       
      return (                                                                                                             
        <Provider>                                                                                                         
          <Switch>                                                                                                         
            <Route path="/" component={Index} />                                                                           
-           <Route path="/docs" component={DocsPage} />                                                                    
+           <Route path="/docs" component={DocsPage} />
+           <Route path="/dashboard">
+             <Dashboard><CallsListPage /></Dashboard>
+           </Route>
+           <Route path="/dashboard/calls/:id">
+             <Dashboard><CallDetailPage /></Dashboard>
+           </Route>
+           <Route path="/dashboard/dnc">
+             <Dashboard><DncPage /></Dashboard>
+           </Route>
          </Switch>                                                                                                        
          {/* Do not remove — off by default, activated by parent iframe via postMessage */}                                                  
          {import.meta.env.DEV && <AgentFeedback />}                                                                       

@@ -3,6 +3,27 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (state engine + operator dashboard)
+
+### Added
+- Structured call state (`captureField` tool, `calls.capturedState` JSON column,
+  `CallSession.capturedState`) — the agent records durable facts (email, order ID, name, etc.) as
+  deterministic key/value pairs instead of relying on the raw transcript as memory. Every turn's system
+  prompt is appended with a "Known facts — do not ask for these again" block built from this state
+  (`agent.ts`'s `buildKnownFactsBlock`), fixing the "asks for the same info twice" failure mode. See
+  ADR-012.
+- State is persisted continuously (on every `captureField` call, not just at call end) so it survives a
+  mid-call crash and is visible on the dashboard immediately, and seeded from the DB row/session on call
+  start so workflow retries and pre-filled context carry forward.
+- New operator dashboard (`/dashboard`, gated behind `ADMIN_API_KEY` via a client-side key prompt):
+  - `/dashboard` — live/completed calls list, auto-refreshing, with capture-count indicators
+  - `/dashboard/calls/:id` — full transcript, tool-call log, and a dedicated captured-state panel
+  - `/dashboard/dnc` — add/remove Do-Not-Call entries from the UI instead of curl only
+- New backend endpoint `GET /api/voice/calls/:id/tool-calls` (was missing — needed for the dashboard's
+  per-call detail view).
+- Tests: `agent.test.ts` (4), `tools/captureField.test.ts` (2) — 48 tests total across both packages, all
+  passing. Typecheck and build both clean; `db:push` applied the new column with no manual migration.
+
 ## [Unreleased] — 2026-07-05 (v1.3 hardening: auth, signature validation, retry-cap fix, rate limiting)
 
 ### Added

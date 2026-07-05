@@ -200,6 +200,16 @@ export const voice = new Hono()
     return c.json({ transcript: rows }, 200);
   })
 
+  // Tool-call log for one call — includes captureField calls, so the
+  // dashboard can show exactly when/how each piece of structured state was
+  // learned, not just the final captured-state snapshot on the call row.
+  .get("/calls/:id/tool-calls", requireAdminKey, async (c) => {
+    const id = Number(c.req.param("id"));
+    const { toolCalls } = await import("../database/schema");
+    const rows = await db.select().from(toolCalls).where(eq(toolCalls.callId, id));
+    return c.json({ toolCalls: rows }, 200);
+  })
+
   // Live call-control: current status/metadata for one call, and a force-end
   // action for operational control mid-call.
   .get("/calls/:id/status", requireAdminKey, async (c) => {

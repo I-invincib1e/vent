@@ -12,6 +12,15 @@ export const calls = sqliteTable("calls", {
   webhookUrl: text("webhook_url"),
   disposition: text("disposition"),
   sttReconnectCount: integer("stt_reconnect_count").default(0),
+  /**
+   * Structured call state — deterministic key/value facts the agent has
+   * confirmed during this call (email, order ID, name, etc), captured via
+   * the `captureField` tool (see voice/tools/captureField.ts). This is the
+   * single source of truth the agent reads back each turn, separate from
+   * the raw transcript — fixes the "asks for the same info twice" failure
+   * mode that plain transcript/summary-based memory has. See ADR-012.
+   */
+  capturedState: text("captured_state", { mode: "json" }).$type<Record<string, string>>().default({}),
   startedAt: integer("started_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

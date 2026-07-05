@@ -1,0 +1,143 @@
+import { useQuery } from "@tanstack/react-query";
+import { useRoute, Link } from "wouter";
+import { motion } from "motion/react";
+import { ArrowLeft, Sparkles, Wrench, PlayCircle } from "lucide-react";
+import { api } from "../../lib/api";
+import { adminHeaders } from "../../lib/admin-key";
+
+export function CallDetailPage() {
+  const [, params] = useRoute("/dashboard/calls/:id");
+  const id = params?.id ?? "";
+
+  const call = useQuery({
+    queryKey: ["call", id],
+    queryFn: async () => {
+      const res = await api.voice.calls[":id"].status.$get({ param: { id } }, { headers: adminHeaders() });
+      return res.json();
+    },
+    refetchInterval: 4000,
+    enabled: !!id,
+  });
+
+  const transcript = useQuery({
+    queryKey: ["call-transcript", id],
+    queryFn: async () => {
+      const res = await api.voice.calls[":id"].transcript.$get({ param: { id } }, { headers: adminHeaders() });
+      return res.json();
+    },
+    refetchInterval: 4000,
+    enabled: !!id,
+  });
+
+  const toolCalls = useQuery({
+    queryKey: ["call-tool-calls", id],
+    queryFn: async () => {
+      const res = await api.voice.calls[":id"]["tool-calls"].$get({ param: { id } }, { headers: adminHeaders() });
+      return res.json();
+    },
+    refetchInterval: 4000,
+    enabled: !!id,
+  });
+
+  const row = call.data && "call" in call.data ? call.data.call : undefined;
+  const facts = Object.entries(row?.capturedState ?? {});
+
+  return (
+    <div>
+      <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink transition-colors mb-6">
+        <ArrowLeft className="size-3.5" />
+        All calls
+      </Link>
+
+      {row && (
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold font-[family-name:var(--font-display)] font-mono">
+            {row.fromNumber} → {row.toNumber}
+          </h1>
+          <p className="text-sm text-ink-soft mt-1">
+            {row.direction} · {row.status}
+            {row.disposition ? ` · ${row.disposition}` : ""}
+          </p>
+          {row.recordingUrl && (
+            <a
+              href={row.recordingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 mt-3 text-sm text-ember hover:underline"
+            >
+              <PlayCircle className="size-4" />
+              Play recording
+            </a>
+          )}
+        </div>
+      )}
+
+      <div className="grid md:grid-cols-[1fr_320px] gap-8">
+        <div>
+          <h2 className="text-xs font-mono uppercase tracking-[0.15em] text-ink-soft mb-3">Transcript</h2>
+          <div className="rounded-lg border border-border divide-y divide-border">
+            {(transcript.data?.transcript ?? []).map((t) => (
+              <div key={t.id} className={`px-4 py-3 ${t.role === "agent" ? "bg-paper-2/40" : ""}`}>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-ink-soft mb-1">{t.role}</div>
+                <div className="text-sm leading-relaxed">{t.text}</div>
+              </div>
+            ))}
+            {transcript.data?.transcript?.length === 0 && (
+              <div className="px-4 py-6 text-sm text-ink-soft text-center">No transcript yet.</div>
+            )}
+          </div>
+
+          <h2 className="text-xs font-mono uppercase tracking-[0.15em] text-ink-soft mt-8 mb-3 flex items-center gap-1.5">
+            <Wrench className="size-3.5" />
+            Tool calls
+          </h2>
+          <div className="rounded-lg border border-border divide-y divide-border">
+            {(toolCalls.data?.toolCalls ?? []).map((tc) => (
+              <div key={tc.id} className="px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-mono">{tc.toolName}</span>
+                  {tc.toolName === "captureField" && (
+                    <span className="text-[10px] font-mono text-signal bg-signal-soft/40 px-1.5 py-0.5 rounded">
+                      state write
+                    </span>
+                  )}
+                </div>
+                <pre className="text-xs text-ink-soft mt-1.5 overflow-x-auto font-mono">
+                  {JSON.stringify(tc.input, null, 2)}
+                </pre>
+              </div>
+            ))}
+            {toolCalls.data?.toolCalls?.length === 0 && (
+              <div className="px-4 py-6 text-sm text-ink-soft text-center">No tool calls yet.</div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-xs font-mono uppercase tracking-[0.15em] text-ink-soft mb-3 flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-signal" />
+            Captured state
+          </h2>
+          <motion.div
+            layout
+            className="rounded-lg border border-signal-soft bg-signal-soft/10 p-4"
+          >
+            <p className="text-xs text-ink-soft mb-3 leading-relaxed">
+              Structured facts confirmed this call — the agent reads these back every turn instead of the raw
+              transcript, so it never re-asks for something already known.
+            </p>
+            {facts.length === 0 && <p className="text-sm text-ink-soft italic">Nothing captured yet.</p>}
+            <dl className="space-y-2">
+              {facts.map(([field, value]) => (
+                <div key={field}>
+                  <dt className="text-[10px] font-mono uppercase tracking-wider text-signal">{field}</dt>
+                  <dd className="text-sm font-medium">{String(value)}</dd>
+                </div>
+              ))}
+            </dl>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}

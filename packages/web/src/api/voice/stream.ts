@@ -42,6 +42,15 @@ export function createVoiceStreamHandlers() {
   let toNumber: string | undefined;
   let capturedDisposition: string | undefined;
   let history: ModelMessage[] = [];
+  /**
+   * Structured, deterministic call state (see tools/captureField.ts and
+   * agent.ts's buildKnownFactsBlock) — the ground truth the agent reads back
+   * every turn, separate from the raw transcript. Seeded from the DB row on
+   * call start (so a workflow retry or pre-filled context survives), updated
+   * whenever the model calls captureField, and persisted continuously so it
+   * survives a crash mid-call and is visible on the dashboard immediately.
+   */
+  let capturedState: Record<string, string> = {};
   let ended = false;
   let maxDurationTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -56,7 +65,27 @@ export function createVoiceStreamHandlers() {
     void dispatchWebhook(webhookUrl, "call.transcript", { callSid, callId: dbCallId, role, text });
   }
 
+  /**
+   * Merges a captureField result into the in-memory state and persists it
+   * immediately (not just at call end) — so a crash mid-call, a dashboard
+   * view during a live call, or the very next agent turn all see the fact
+   * right away rather than only once the call finalizes.
+   */
+  async function mergeCapturedField(field: string, value: string) {
+    capturedState = { ...capturedState, [field]: value };
+    if (!dbCallId) return;
+    await withRetry(
+      () => db.update(calls).set({ capturedState }).where(eq(calls.id, dbCallId!)),
+      { label: "persist-captured-state" },
+    ).catch((err) => console.error("[voice] failed to persist captured state", err));
+  }
+
   async function logToolCall(name: string, input: unknown, output: unknown) {
+    if (name === "captureField" && input && typeof input === "object" && "field" in input && "value" in input) {
+      const { field, value } = input as { field: string; value: string };
+      void mergeCapturedField(field, value);
+    }
+
     if (!dbCallId) return;
     await db
       .insert(toolCalls)
@@ -175,12 +204,15 @@ export function createVoiceStreamHandlers() {
         onToolCall: (name, input, output) => void logToolCall(name, input, output),
         onLatency: (ms, model) => console.log(`[voice] turn time-to-first-token: ${ms}ms (${model})`),
         llmProvider: llmProviderOverride,
+        capturedState,
       }),
     );
   }
 
   async function runGreeting(ws: Sendable) {
-    await speak(ws, (signal) => runVoiceAgentGreeting({ persona, signal, onTextDelta: (delta) => tts?.sendText(delta) }));
+    await speak(ws, (signal) =>
+      runVoiceAgentGreeting({ persona, signal, onTextDelta: (delta) => tts?.sendText(delta), capturedState }),
+    );
   }
 
   return {
@@ -251,6 +283,7 @@ export function createVoiceStreamHandlers() {
               .limit(1);
             dbCallId = row?.id ?? null;
             toNumber = row?.toNumber;
+            capturedState = { ...(row?.capturedState ?? {}), ...(session?.capturedState ?? {}) };
             // Per-number config (see number-config.ts) applies to every call
             // on that number; an explicit session override (outbound trigger,
             // e.g. POST /calls/outbound) takes precedence when both exist.

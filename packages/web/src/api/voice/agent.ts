@@ -4,6 +4,7 @@ import { lookupInfo } from "./tools/lookupInfo";
 import { bookAppointment } from "./tools/bookAppointment";
 import { setDisposition } from "./tools/setDisposition";
 import { crmSync } from "./tools/crmSync";
+import { captureField } from "./tools/captureField";
 import { withDisclosure } from "@vent/compliance";
 import { resolveVoiceModel, getActiveModelLabel } from "./llm";
 
@@ -76,7 +77,27 @@ export function resolvePersona(explicitPersona?: string, calledNumber?: string):
   return withDisclosure(base);
 }
 
-export const voiceTools = { lookupInfo, bookAppointment, setDisposition, crmSync };
+export const voiceTools = { lookupInfo, bookAppointment, setDisposition, crmSync, captureField };
+
+/**
+ * Renders the current structured call state as a compact, explicit block the
+ * model reads as ground truth — separate from (and prioritized over) the raw
+ * transcript. This is the fix for the "asks for the same info twice" failure
+ * mode: the model is told what's already known instead of being expected to
+ * re-derive it from scrollback. Empty state renders nothing (no block at all)
+ * so it never pollutes the prompt on calls with nothing captured yet.
+ */
+export function buildKnownFactsBlock(capturedState?: Record<string, string>): string {
+  const entries = Object.entries(capturedState ?? {});
+  if (entries.length === 0) return "";
+  const lines = entries.map(([field, value]) => `- ${field}: ${value}`).join("\n");
+  return dedent`
+
+
+    Known facts about this call — already confirmed, do not ask for these again:
+    ${lines}
+  `;
+}
 
 // If the model produces no text at all for a turn (e.g. gets stuck only
 // calling tools, or the provider returns empty output), we still need to say
@@ -103,6 +124,7 @@ export async function runVoiceAgentTurn({
   signal,
   onLatency,
   llmProvider,
+  capturedState,
 }: {
   history: ModelMessage[];
   persona?: string;
@@ -113,6 +135,9 @@ export async function runVoiceAgentTurn({
   onLatency?: (ms: number, model: string) => void;
   /** Per-call override of the global LLM_PROVIDER — see session-store.ts. */
   llmProvider?: "gateway" | "groq";
+  /** Structured facts captured so far this call — appended to the system
+   * prompt as ground truth (see buildKnownFactsBlock). */
+  capturedState?: Record<string, string>;
 }): Promise<string> {
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), TURN_TIMEOUT_MS);
@@ -126,7 +151,7 @@ export async function runVoiceAgentTurn({
   try {
     const result = streamText({
       model: resolveVoiceModel(llmProvider),
-      system: persona ?? DEFAULT_PERSONA,
+      system: (persona ?? DEFAULT_PERSONA) + buildKnownFactsBlock(capturedState),
       messages: history,
       tools: voiceTools,
       stopWhen: stepCountIs(6),
@@ -180,10 +205,13 @@ export function runVoiceAgentGreeting({
   persona,
   onTextDelta,
   signal,
+  capturedState,
 }: {
   persona?: string;
   onTextDelta: (delta: string) => void;
   signal?: AbortSignal;
+  /** Pre-seeded facts (e.g. from a CRM/workflow before an outbound call connects). */
+  capturedState?: Record<string, string>;
 }) {
   return runVoiceAgentTurn({
     history: [
@@ -195,5 +223,6 @@ export function runVoiceAgentGreeting({
     persona,
     onTextDelta,
     signal,
+    capturedState,
   });
 }

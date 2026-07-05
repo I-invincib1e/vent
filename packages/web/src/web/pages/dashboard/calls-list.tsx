@@ -1,0 +1,92 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { PhoneIncoming, PhoneOutgoing, Sparkles } from "lucide-react";
+import { api } from "../../lib/api";
+import { adminHeaders } from "../../lib/admin-key";
+
+const STATUS_STYLES: Record<string, string> = {
+  "in-progress": "bg-signal/15 text-signal",
+  completed: "bg-ink/10 text-ink-soft",
+  failed: "bg-destructive/10 text-destructive",
+};
+
+function formatWhen(iso: string | null) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  return date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+export function CallsListPage() {
+  const calls = useQuery({
+    queryKey: ["calls"],
+    queryFn: async () => {
+      const res = await api.voice.calls.$get({}, { headers: adminHeaders() });
+      return res.json();
+    },
+    refetchInterval: 5000,
+  });
+
+  const rows = [...(calls.data?.calls ?? [])].reverse();
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold font-[family-name:var(--font-display)]">Calls</h1>
+          <p className="text-sm text-ink-soft mt-1">Live and completed calls across every configured number.</p>
+        </div>
+        <span className="text-xs font-mono text-ink-soft">{rows.length} total</span>
+      </div>
+
+      {calls.isLoading && <p className="text-sm text-ink-soft">Loading…</p>}
+      {!calls.isLoading && rows.length === 0 && (
+        <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-ink-soft">
+          No calls yet. Place an outbound call or dial your Twilio number to see one here.
+        </div>
+      )}
+
+      <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
+        {rows.map((call) => {
+          const factCount = Object.keys(call.capturedState ?? {}).length;
+          return (
+            <Link
+              key={call.id}
+              href={`/dashboard/calls/${call.id}`}
+              className="flex items-center gap-4 px-5 py-3.5 hover:bg-paper-2/60 transition-colors"
+            >
+              <div className="shrink-0">
+                {call.direction === "inbound" ? (
+                  <PhoneIncoming className="size-4 text-signal" />
+                ) : (
+                  <PhoneOutgoing className="size-4 text-ember" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm">{call.fromNumber} → {call.toNumber}</span>
+                  {call.disposition && (
+                    <span className="text-xs font-mono text-ink-soft bg-paper-2 px-1.5 py-0.5 rounded">
+                      {call.disposition}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-ink-soft mt-0.5">{formatWhen(call.startedAt)}</div>
+              </div>
+              {factCount > 0 && (
+                <div className="flex items-center gap-1 text-xs text-signal shrink-0" title={`${factCount} facts captured`}>
+                  <Sparkles className="size-3.5" />
+                  {factCount}
+                </div>
+              )}
+              <span
+                className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${STATUS_STYLES[call.status] ?? "bg-paper-2 text-ink-soft"}`}
+              >
+                {call.status}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
