@@ -165,12 +165,18 @@ OUTBOUND_CALL_RATE_WINDOW_MS=60000    # rate-limit window in ms (default 1 minut
   in later. It currently ships with `noopNationalRegistryFetcher`, i.e. it's a documented stub, not a
   working integration — the sandbox this was built in can't hold a real SAN. Wire in a real fetcher before
   relying on this for legal compliance beyond the app's own DNC list.
-- **Tunnel supervisor is a mitigation, not a fix.** `scripts/tunnel-supervisor.sh` watches the `cloudflared`
-  quick-tunnel process, restarts it on crash, and auto-updates `PUBLIC_APP_URL` (in `.env`) plus the Twilio
-  number's Voice webhook whenever the tunnel URL changes (quick tunnels get a new random URL on every
-  restart). This keeps things limping along for local/dev use, but the real fix is a named Cloudflare
-  Tunnel (stable hostname) or deploying behind a persistent real domain — see [`DECISIONS.md`](./DECISIONS.md)
-  (ADR-008) for why quick tunnels aren't a production answer.
+- **Named Cloudflare Tunnel (recommended for anything beyond quick local testing).** Vent runs behind a
+  real named Cloudflare Tunnel with a fixed hostname — no rotating URLs. Set up once:
+  1. Create a tunnel and ingress rule (`hostname` → `http://localhost:4200`) via the Cloudflare API or
+     `cloudflared tunnel create` — see [`DECISIONS.md`](./DECISIONS.md) (ADR-013) for the exact steps.
+  2. Save the tunnel token to `.cloudflare-tunnel-token` in the repo root (gitignored, never commit it).
+  3. Point a CNAME at `<tunnel-id>.cfargotunnel.com` from wherever your domain's DNS lives (Cloudflare,
+     Vercel, or anywhere else — the zone doesn't need to move to Cloudflare, only the tunnel does).
+  4. Run it: `bunx pm2 start scripts/run-cloudflare-tunnel.sh --name cloudflare-tunnel --interpreter bash`
+     — restarts automatically alongside `web-app`.
+  - `scripts/tunnel-supervisor.sh` (the old free `trycloudflare.com` quick-tunnel mitigation, ADR-008/
+    ADR-011) is kept as a no-account fallback for local dev only — it's superseded, not the recommended
+    path anymore.
 
 ### Point Twilio at your app
 

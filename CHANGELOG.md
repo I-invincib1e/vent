@@ -3,6 +3,16 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (named Cloudflare tunnel)
+
+### Added
+- Real named Cloudflare Tunnel (`vent.irishi.dev` → `localhost:4200`), created via the Cloudflare API and
+  run through `scripts/run-cloudflare-tunnel.sh`, managed by PM2 (`cloudflare-tunnel` process) — replaces
+  the free `trycloudflare.com` quick-tunnel's rotating URLs. See ADR-013.
+- `PUBLIC_APP_URL` and the Twilio number's Voice webhook both updated to the fixed hostname.
+- `scripts/tunnel-supervisor.sh` (the old quick-tunnel mitigation) marked superseded in its header comment,
+  kept only as a no-domain fallback for local dev.
+
 ## [Unreleased] — 2026-07-05 (state engine + operator dashboard)
 
 ### Added

@@ -74,3 +74,6 @@ packages/mobile/scripts/*
 !packages/mobile/scripts/generate-ios-certs.py
 .git-push.env
 task.md
+
+# Cloudflare named-tunnel credential (per ADR-013) — never commit
+.cloudflare-tunnel-token
