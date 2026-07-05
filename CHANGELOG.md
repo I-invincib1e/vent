@@ -3,6 +3,30 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (compliance layer extracted into a standalone package)
+
+### Added
+- New workspace package `packages/vent-compliance` (`@vent/compliance`) — the TCPA calling-window check,
+  Do-Not-Call enforcement, consent/AI disclosure injection, HIPAA boot-time guardrail, and GDPR
+  retention/erasure modules, extracted with zero dependency on Twilio, Bun/Hono, or any specific database.
+  Storage-backed modules now take a small adapter interface (`DncStorageAdapter`, `CallLogStorageAdapter`)
+  instead of importing a database directly; in-memory reference adapters ship for quick starts and tests.
+  New `checkOutboundCallCompliance()` convenience helper runs the DNC + calling-window gates together in
+  one call. 13 unit tests included, all passing standalone (no Vent-specific code required).
+- `packages/web/src/api/voice/compliance/adapters.ts` — Drizzle/Turso adapters wiring Vent's own schema
+  into the new package; this is the only app-specific glue code the extraction required.
+
+### Changed
+- Vent's app-level compliance code (`voice/compliance/{calling-window,dnc,consent,hipaa,gdpr}.ts`) removed
+  and replaced by imports from `@vent/compliance` throughout (`routes.ts`, `agent.ts`, `server.ts`,
+  `api/index.ts`, `workflows/engine.ts`, `workflows/scheduler.ts`) — proves the extraction works standalone
+  by dogfooding it in the real, already-working app rather than leaving it untested in isolation.
+
+### Verified
+- All previously-passing compliance regression checks (DNC add/list/remove/block, calling-window
+  enforcement, GDPR erasure endpoint, `/api/health` compliance reporting) re-run and pass identically
+  after the swap.
+
 ## [Unreleased] — 2026-07-04 (research: CAI market landscape + orchestration framework evaluation)
 
 ### Research / Decisions (no code changes)

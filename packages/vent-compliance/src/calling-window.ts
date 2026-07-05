@@ -1,10 +1,10 @@
 /**
  * TCPA-style calling-window enforcement: outbound calls are only allowed
- * between 8am–9pm in the *called party's* local time. We derive a rough
+ * between 8am-9pm in the *called party's* local time. We derive a rough
  * timezone from the US/Canada area code (NANP) when possible; when the
  * number's timezone can't be determined (non-NANP / unrecognized), we fall
  * back to the safest conservative window recommended by TCPA compliance
- * guides: 11am–9pm Eastern, which stays within 8am–9pm across all US
+ * guides: 11am-9pm Eastern, which stays within 8am-9pm across all US
  * mainland timezones.
  *
  * This is a best-effort guardrail, not a legal certification — for real
@@ -57,7 +57,7 @@ const AREA_CODE_TIMEZONES: Record<string, string> = {
 function extractNanpAreaCode(e164: string): string | null {
   // NANP numbers: +1XXXYYYYYYY — area code is the 3 digits after +1
   const match = e164.match(/^\+1(\d{3})\d{7}$/);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 function getHourInTimezone(timezone: string, date: Date): number {
@@ -77,17 +77,36 @@ export type CallingWindowResult = {
   localHour: number;
 };
 
-export function checkCallingWindow(toNumber: string, now: Date = new Date()): CallingWindowResult {
+export type CallingWindowOptions = {
+  /** Override the allowed start hour (default 8, i.e. 8am). */
+  startHour?: number;
+  /** Override the allowed end hour (default 21, i.e. 9pm). */
+  endHour?: number;
+  /** Extend or override the built-in area-code -> timezone map. */
+  areaCodeTimezones?: Record<string, string>;
+};
+
+export function checkCallingWindow(
+  toNumber: string,
+  now: Date = new Date(),
+  options: CallingWindowOptions = {},
+): CallingWindowResult {
+  const startHour = options.startHour ?? CALL_WINDOW_START_HOUR;
+  const endHour = options.endHour ?? CALL_WINDOW_END_HOUR;
+  const areaCodeMap = options.areaCodeTimezones
+    ? { ...AREA_CODE_TIMEZONES, ...options.areaCodeTimezones }
+    : AREA_CODE_TIMEZONES;
+
   const areaCode = extractNanpAreaCode(toNumber);
-  const timezone = areaCode ? AREA_CODE_TIMEZONES[areaCode] : null;
+  const timezone: string | null = (areaCode ? areaCodeMap[areaCode] : undefined) ?? null;
 
   // Fall back to the safe conservative window (Eastern time) when we can't
   // resolve a timezone for this number.
   const effectiveTimezone = timezone ?? "America/New_York";
   const localHour = getHourInTimezone(effectiveTimezone, now);
 
-  const startHour = timezone ? CALL_WINDOW_START_HOUR : 11; // safe default: 11am-9pm ET
-  const withinWindow = localHour >= startHour && localHour < CALL_WINDOW_END_HOUR;
+  const effectiveStartHour = timezone ? startHour : Math.max(startHour, 11); // safe default: 11am-9pm ET
+  const withinWindow = localHour >= effectiveStartHour && localHour < endHour;
 
   return {
     allowed: withinWindow,
@@ -96,7 +115,7 @@ export function checkCallingWindow(toNumber: string, now: Date = new Date()): Ca
     reason: withinWindow
       ? "within allowed calling window"
       : timezone
-        ? `outside allowed window (local time ${localHour}:00 in ${timezone}, allowed ${CALL_WINDOW_START_HOUR}:00-${CALL_WINDOW_END_HOUR}:00)`
-        : `timezone unresolved for this number — outside safe fallback window (${localHour}:00 ET, allowed 11:00-21:00 ET)`,
+        ? `outside allowed window (local time ${localHour}:00 in ${timezone}, allowed ${startHour}:00-${endHour}:00)`
+        : `timezone unresolved for this number — outside safe fallback window (${localHour}:00 ET, allowed ${effectiveStartHour}:00-${endHour}:00 ET)`,
   };
 }

@@ -3,9 +3,7 @@ import { cors } from "hono/cors"
 import { voice } from "./voice/routes";
 import { resolveTtsProvider } from "./voice/tts";
 import { resolveLlmProvider, getActiveModelLabel } from "./voice/llm";
-import { isHipaaMode } from "./voice/compliance/hipaa";
-import { getRetentionDays } from "./voice/compliance/gdpr";
-import { isDisclosureEnabled } from "./voice/compliance/consent";
+import { isHipaaMode, getRetentionDays, isDisclosureEnabled } from "@vent/compliance";
 
 const app = new Hono()
   .basePath('api')

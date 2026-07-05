@@ -4,7 +4,7 @@ import { lookupInfo } from "./tools/lookupInfo";
 import { bookAppointment } from "./tools/bookAppointment";
 import { setDisposition } from "./tools/setDisposition";
 import { crmSync } from "./tools/crmSync";
-import { withDisclosure } from "./compliance/consent";
+import { withDisclosure } from "@vent/compliance";
 import { resolveVoiceModel, getActiveModelLabel } from "./llm";
 
 const DEFAULT_PERSONA = dedent`

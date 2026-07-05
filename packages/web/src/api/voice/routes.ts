@@ -5,11 +5,16 @@ import { twilioClient, getPublicUrl, getWsUrl } from "./twilio-client";
 import { sessionStore } from "./session-store";
 import { dispatchWebhook, resolveWebhookUrl } from "./webhooks";
 import { db } from "../database";
-import { calls, doNotCall } from "../database/schema";
+import { calls } from "../database/schema";
 import { eq } from "drizzle-orm";
-import { checkCallingWindow } from "./compliance/calling-window";
-import { isOnDoNotCallList, addToDoNotCallList, removeFromDoNotCallList } from "./compliance/dnc";
-import { eraseCallerData } from "./compliance/gdpr";
+import {
+  checkOutboundCallCompliance,
+  addToDoNotCallList,
+  removeFromDoNotCallList,
+  listDoNotCall,
+  eraseCallerData,
+} from "@vent/compliance";
+import { dncAdapter, callLogAdapter } from "./compliance/adapters";
 import { runWorkflowForOutcome } from "./workflows/engine";
 import type { WorkflowOutcome } from "./workflows/types";
 
@@ -72,17 +77,12 @@ export const voice = new Hono()
     const from = process.env.TWILIO_PHONE_NUMBER;
     if (!from) return c.json({ error: "TWILIO_PHONE_NUMBER is not configured" }, 500);
 
-    // Compliance gates — enforced automatically, no manual step required.
-    // A call that fails either check is rejected and never dials.
-    if (await isOnDoNotCallList(to)) {
-      return c.json({ error: "This number is on the Do Not Call list — call blocked." }, 403);
-    }
-    const windowCheck = checkCallingWindow(to);
-    if (!windowCheck.allowed) {
-      return c.json(
-        { error: `Call blocked by calling-window compliance check: ${windowCheck.reason}` },
-        403,
-      );
+    // Compliance gates — enforced automatically via @vent/compliance, no
+    // manual step required. A call that fails either check is rejected and
+    // never dials.
+    const compliance = await checkOutboundCallCompliance(to, dncAdapter);
+    if (!compliance.allowed) {
+      return c.json({ error: compliance.reason }, 403);
     }
 
     const call = await twilioClient.calls.create({
@@ -230,28 +230,28 @@ export const voice = new Hono()
     return c.json({ sent: true, target }, 200);
   })
 
-  // Compliance: Do-Not-Call list management — see voice/compliance/dnc.ts.
-  // Enforced automatically on every outbound call (POST /calls/outbound).
+  // Compliance: Do-Not-Call list management — enforced automatically on
+  // every outbound call (POST /calls/outbound) via @vent/compliance.
   .get("/dnc", async (c) => {
-    const rows = await db.select().from(doNotCall).orderBy(doNotCall.addedAt);
+    const rows = await listDoNotCall(dncAdapter);
     return c.json({ doNotCall: rows }, 200);
   })
   .post("/dnc", async (c) => {
     const { phoneNumber, reason } = await c.req.json<{ phoneNumber: string; reason?: string }>();
     if (!phoneNumber) return c.json({ error: "`phoneNumber` is required" }, 400);
-    await addToDoNotCallList(phoneNumber, reason, "manual");
+    await addToDoNotCallList(dncAdapter, phoneNumber, reason, "manual");
     return c.json({ added: true, phoneNumber }, 201);
   })
   .delete("/dnc/:phoneNumber", async (c) => {
     const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
-    await removeFromDoNotCallList(phoneNumber);
+    await removeFromDoNotCallList(dncAdapter, phoneNumber);
     return c.json({ removed: true, phoneNumber }, 200);
   })
 
   // Compliance: GDPR right-to-erasure — deletes all call data tied to a
-  // phone number on request. See voice/compliance/gdpr.ts.
+  // phone number on request, via @vent/compliance.
   .delete("/callers/:phoneNumber", async (c) => {
     const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
-    const result = await eraseCallerData(phoneNumber);
+    const result = await eraseCallerData(callLogAdapter, phoneNumber);
     return c.json({ erased: true, ...result }, 200);
   });

@@ -45,7 +45,7 @@ export const toolCalls = sqliteTable("tool_calls", {
 
 /**
  * Internal Do-Not-Call list, checked automatically before every outbound call
- * (see voice/compliance/dnc.ts). Numbers land here either manually
+ * (enforced via the @vent/compliance package, see voice/compliance/adapters.ts). Numbers land here either manually
  * (POST /api/voice/dnc) or automatically via a workflow action (e.g. the
  * agent marks a call "not-interested" and a workflow adds the number here).
  */

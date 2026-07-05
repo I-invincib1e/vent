@@ -156,11 +156,16 @@ dialing — a blocked call returns a `403` with the reason, and never reaches Tw
 
 ## Compliance
 
-Enforced automatically — not something an integrator has to remember to wire in:
+Enforced automatically — not something an integrator has to remember to wire in. As of this release, the
+compliance layer lives in its own standalone, framework-agnostic package —
+[`packages/vent-compliance`](./packages/vent-compliance) (`@vent/compliance`) — with zero dependency on
+Twilio, Bun/Hono, or any specific database. It's designed to be adoptable independently of Vent's own
+pipeline (in a Pipecat, LiveKit, or fully custom voice stack); Vent's own app uses it via a thin Drizzle
+adapter (`voice/compliance/adapters.ts`) as its own reference integration. See the package's README for
+usage outside this repo.
 
 - **TCPA calling window**: outbound calls are blocked outside 8am–9pm in the called party's local time
-  (best-effort area-code-based timezone inference, safe fallback when unresolved). See
-  `voice/compliance/calling-window.ts`.
+  (best-effort area-code-based timezone inference, safe fallback when unresolved).
 - **Do-Not-Call list**: every outbound call is checked against an internal DNC list first
   (`GET/POST /api/voice/dnc`, `DELETE /api/voice/dnc/:phoneNumber`). The National DNC Registry has no free
   API — it requires a paid Subscription Account Number (SAN) via telemarketing.donotcall.gov. The internal

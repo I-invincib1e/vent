@@ -3,8 +3,8 @@ import { db } from "../../database";
 import { scheduledCalls } from "../../database/schema";
 import { twilioClient, getPublicUrl } from "../twilio-client";
 import { sessionStore } from "../session-store";
-import { isOnDoNotCallList } from "../compliance/dnc";
-import { checkCallingWindow } from "../compliance/calling-window";
+import { isOnDoNotCallList, checkCallingWindow } from "@vent/compliance";
+import { dncAdapter } from "../compliance/adapters";
 
 const SWEEP_INTERVAL_MS = 60 * 1000; // check every minute
 
@@ -22,7 +22,7 @@ async function executeDueScheduledCalls() {
 
   for (const row of due) {
     try {
-      if (await isOnDoNotCallList(row.toNumber)) {
+      if (await isOnDoNotCallList(dncAdapter, row.toNumber)) {
         console.warn(`[scheduler] skipping scheduled call to ${row.toNumber} — on DNC list`);
         await db.update(scheduledCalls).set({ status: "canceled" }).where(eq(scheduledCalls.id, row.id));
         continue;

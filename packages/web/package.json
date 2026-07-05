@@ -18,6 +18,7 @@
     "db:studio": "bun --env-file=../../.env drizzle-kit studio"
   },
   "dependencies": {
+    "@vent/compliance": "workspace:*",
     "@ai-sdk/groq": "^4.0.5",
     "@ai-sdk/react": "^4.0.16",
     "@libsql/client": "^0.17.2",

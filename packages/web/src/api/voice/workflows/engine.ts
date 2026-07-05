@@ -1,6 +1,7 @@
 import { db } from "../../database";
 import { scheduledCalls } from "../../database/schema";
-import { addToDoNotCallList } from "../compliance/dnc";
+import { addToDoNotCallList } from "@vent/compliance";
+import { dncAdapter } from "../compliance/adapters";
 import { dispatchWebhook, resolveWebhookUrl } from "../webhooks";
 import { getWorkflowsForNumber } from "./index";
 import type { WorkflowOutcome } from "./types";
@@ -53,7 +54,7 @@ export async function runWorkflowForOutcome(params: {
           break;
         }
         case "addToDnc": {
-          await addToDoNotCallList(toNumber, `workflow:${workflow.name} outcome:${outcome}`, "agent");
+          await addToDoNotCallList(dncAdapter, toNumber, `workflow:${workflow.name} outcome:${outcome}`, "agent");
           console.log(`[workflow:${workflow.name}] added ${toNumber} to DNC list`);
           break;
         }
