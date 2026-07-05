@@ -3,6 +3,16 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (reverted named tunnel, back to quick-tunnel)
+
+### Changed
+- Reverted ADR-013's named Cloudflare tunnel — a plain CNAME on Vercel's DNS can't route into
+  `cfargotunnel.com` without Cloudflare actually proxying the hostname, and Cloudflare's free-tier
+  Partial (CNAME) Setup that would've enabled that is no longer self-serve. Not worth a full nameserver
+  migration at this stage (pre-launch, going into a Reddit/community-feedback phase). Back to the free
+  quick-tunnel + `tunnel-supervisor.sh`, which already auto-updates `PUBLIC_APP_URL`/the Twilio webhook on
+  every URL rotation. See ADR-014.
+
 ## [Unreleased] — 2026-07-05 (named Cloudflare tunnel)
 
 ### Added
