@@ -3,6 +3,28 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (integrations, resilience layer, CI)
+
+### Added
+- Shared integration resilience layer (`packages/web/src/api/voice/integrations/resilient-fetch.ts`) —
+  timeout, retry with backoff, and a per-integration circuit breaker, so a slow or down third-party API
+  degrades gracefully instead of stalling or crashing a live call turn. 7 tests.
+- Three new pre-built integrations, direct response to real community feedback: GoHighLevel and Salesforce
+  (both wired into `crmSync`, priority order GoHighLevel → Salesforce → HubSpot), and Google Calendar
+  (replaces the old `bookAppointment` stub with a real booking flow). HubSpot's existing integration was
+  extracted and rewrapped in the same resilience layer for consistency.
+- `docs/testing.md` — what's tested, how to run tests, how to write new ones, what's deliberately not
+  covered yet (the live call pipeline, OAuth flows).
+- `.github/workflows/ci.yml` — GitHub Actions CI: typecheck, full test suite, build, and lint on every push/
+  PR to `main`. No real secrets needed — build and tests are fully static/mocked.
+- 18 new tests total (7 resilience-layer + 11 across the four integrations) — 64 tests passing across both
+  packages, up from 46.
+
+### Fixed
+- 7 lint errors closed to get `bun run lint` fully green (missing aria-labels on dashboard form inputs, an
+  autoFocus a11y warning, an unnecessary spread fallback, one pre-existing unused import) — required for
+  CI's lint step to mean anything.
+
 ## [Unreleased] — 2026-07-05 (docs restructure, roadmap, open-core decision)
 
 ### Added

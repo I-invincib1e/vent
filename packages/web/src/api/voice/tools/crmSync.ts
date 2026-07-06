@@ -1,15 +1,24 @@
 import z from "zod";
 import { tool } from "ai";
+import { syncToGoHighLevel } from "../integrations/gohighlevel";
+import { syncToSalesforce } from "../integrations/salesforce";
+import { syncToHubspot } from "../integrations/hubspot";
 
 /**
- * CRM integration stub (HubSpot). Upserts a contact and logs a call
- * engagement mid-conversation — for when the agent needs to act on CRM data
- * live during the call, complementing (not replacing) the generic outbound
- * webhook system used for after-the-fact sync via n8n/Zapier.
+ * CRM integration — upserts a contact and logs a call engagement mid-
+ * conversation, for when the agent needs to act on CRM data live during the
+ * call (complementing, not replacing, the generic outbound webhook system
+ * used for after-the-fact sync via n8n/Zapier).
  *
- * Wire a real HUBSPOT_API_KEY and uncomment the fetch calls to go live.
- * Swapping to Salesforce/Zoho/GoHighLevel follows the same shape — replace
- * the endpoint/auth, keep the same tool interface.
+ * Tries whichever CRM is actually configured, in this priority order:
+ * GoHighLevel -> Salesforce -> HubSpot. This order follows what came up most
+ * in community feedback (GoHighLevel specifically was named repeatedly as a
+ * tool this audience already runs). Each integration lives in
+ * ../integrations/ and is wrapped in the shared resilience layer
+ * (../integrations/resilient-fetch.ts) — a slow/down CRM degrades to a clear
+ * "not synced" result instead of stalling or crashing the call.
+ *
+ * None configured -> a plain "no CRM connected" result, same as before.
  */
 export const crmSync = tool({
   description:
@@ -21,41 +30,23 @@ export const crmSync = tool({
     notes: z.string().describe("Brief summary of what this call was about"),
   }),
   async execute({ callerName, phoneNumber, notes }) {
-    const apiKey = process.env.HUBSPOT_API_KEY;
-    if (!apiKey) {
-      return {
-        synced: false,
-        message: "(stub) HUBSPOT_API_KEY not configured — no real CRM connected yet.",
-      };
+    if (process.env.GOHIGHLEVEL_API_KEY) {
+      const result = await syncToGoHighLevel(phoneNumber, callerName, notes);
+      return { crm: "gohighlevel", ...result };
     }
-
-    try {
-      // Upsert contact by phone number.
-      const contactRes = await fetch("https://api.hubapi.com/crm/v3/objects/contacts", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          properties: { phone: phoneNumber, firstname: callerName ?? "Unknown caller" },
-        }),
-      });
-      const contact = await contactRes.json().catch(() => null);
-
-      // Log a call engagement note.
-      await fetch("https://api.hubapi.com/crm/v3/objects/calls", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          properties: {
-            hs_call_body: notes,
-            hs_call_direction: "INBOUND",
-            hs_timestamp: Date.now(),
-          },
-        }),
-      });
-
-      return { synced: true, contactId: contact?.id ?? null };
-    } catch (err) {
-      return { synced: false, message: `CRM sync failed: ${(err as Error).message}` };
+    if (process.env.SALESFORCE_ACCESS_TOKEN) {
+      const result = await syncToSalesforce(phoneNumber, callerName, notes);
+      return { crm: "salesforce", ...result };
     }
+    if (process.env.HUBSPOT_API_KEY) {
+      const result = await syncToHubspot(phoneNumber, callerName, notes);
+      return { crm: "hubspot", ...result };
+    }
+    return {
+      crm: null,
+      synced: false,
+      message:
+        "(not configured) No CRM connected — set GOHIGHLEVEL_API_KEY, SALESFORCE_ACCESS_TOKEN, or HUBSPOT_API_KEY.",
+    };
   },
 });

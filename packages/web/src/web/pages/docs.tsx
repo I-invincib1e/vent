@@ -5,7 +5,6 @@ import {
   Phone,
   PhoneOutgoing,
   Mic,
-  Volume2,
   Webhook,
   Database,
   KeyRound,

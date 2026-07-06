@@ -1,0 +1,45 @@
+name: CI
+
+# Runs on every push and PR against main. Keeps typecheck, tests, and the
+# production build green before anything merges — see CONTRIBUTING.md for
+# what's expected locally before you push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck (web)
+        run: cd packages/web && bun run typecheck
+
+      - name: Typecheck (vent-compliance)
+        run: cd packages/vent-compliance && bun run typecheck
+
+      - name: Test (web) — voice pipeline, integrations, resilience layer
+        run: cd packages/web && bun run test
+
+      - name: Test (vent-compliance) — DNC, calling-window, HIPAA, GDPR, national-DNC adapter
+        run: cd packages/vent-compliance && bun run test
+
+      - name: Build (web)
+        # No real DATABASE_URL/API keys needed — this is a static build
+        # (tsc --noEmit && vite build), nothing here touches a live database
+        # or external API at build time.
+        run: cd packages/web && bun run build
+
+      - name: Lint
+        run: bun run lint

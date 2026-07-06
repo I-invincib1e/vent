@@ -73,12 +73,14 @@ export function DncPage() {
           value={phoneNumber}
           onChange={(e) => setPhoneNumber(e.target.value)}
           placeholder="+15551234567"
+          aria-label="Phone number"
           className="flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-ember/40"
         />
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (optional)"
+          aria-label="Reason"
           className="flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ember/40"
         />
         <button

@@ -60,8 +60,8 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Admin key"
+            aria-label="Admin key"
             className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-ember/40"
-            autoFocus
           />
           <button
             type="submit"

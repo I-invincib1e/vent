@@ -283,7 +283,7 @@ export function createVoiceStreamHandlers() {
               .limit(1);
             dbCallId = row?.id ?? null;
             toNumber = row?.toNumber;
-            capturedState = { ...(row?.capturedState ?? {}), ...(session?.capturedState ?? {}) };
+            capturedState = { ...row?.capturedState, ...session?.capturedState };
             // Per-number config (see number-config.ts) applies to every call
             // on that number; an explicit session override (outbound trigger,
             // e.g. POST /calls/outbound) takes precedence when both exist.

@@ -2,6 +2,8 @@
 
 **Your voice agent. Your infrastructure. Your rules.**
 
+[![CI](https://github.com/rishipawar8999-tech/vent/actions/workflows/ci.yml/badge.svg)](https://github.com/rishipawar8999-tech/vent/actions/workflows/ci.yml)
+
 🔗 **Live:** [voiceag-1mf8gfp-preview-4200.runable.site](https://voiceag-1mf8gfp-preview-4200.runable.site/)
 — includes the landing page, in-app docs (`/docs`), and a demo tour of the operator dashboard.
 
@@ -26,8 +28,10 @@ repo can understand *why* it works the way it does, not just *what* the code doe
 - **Structured state, not just a transcript** — the agent captures durable facts (email, order ID, name)
   as ground truth it reads back every turn, instead of re-deriving them from scrollback — see
   [`docs/state-engine.md`](./docs/state-engine.md)
-- **Tool calling** — the agent can look things up, book appointments, log to a CRM, or record a call
-  disposition mid-conversation
+- **Tool calling** — the agent can look things up, book a real Google Calendar appointment, sync to
+  GoHighLevel/Salesforce/HubSpot, or record a call disposition mid-conversation. Every integration is
+  wrapped in a shared timeout/retry/circuit-breaker layer, so a slow or down third-party API degrades
+  gracefully instead of stalling the call — see [`docs/configuration.md`](./docs/configuration.md)
 - **Recording + transcripts** — every call and every turn is persisted to your own database
 - **Operator dashboard** — calls, transcripts, captured state, and DNC management at `/dashboard` — see
   [`docs/dashboard.md`](./docs/dashboard.md)
@@ -54,6 +58,7 @@ repo can understand *why* it works the way it does, not just *what* the code doe
 | [`docs/configuration.md`](./docs/configuration.md) | Workflows, per-number config, personas, agent tools |
 | [`docs/state-engine.md`](./docs/state-engine.md) | Structured call state, why it exists |
 | [`docs/dashboard.md`](./docs/dashboard.md) | The operator dashboard |
+| [`docs/testing.md`](./docs/testing.md) | What's tested, how to run tests, how to write new ones, CI |
 | [`ROADMAP.md`](./ROADMAP.md) | What's shipped, in progress, and next — with a checklist |
 | [`DECISIONS.md`](./DECISIONS.md) | Every architecture decision and why, including reversals |
 | [`CHANGELOG.md`](./CHANGELOG.md) | Dated history of everything shipped |

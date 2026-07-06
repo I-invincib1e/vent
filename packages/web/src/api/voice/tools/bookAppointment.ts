@@ -1,9 +1,13 @@
 import z from "zod";
 import { tool } from "ai";
+import { bookOnGoogleCalendar } from "../integrations/google-calendar";
 
 /**
- * Stub tool — demonstrates a "write" action tool (booking/scheduling) during a call.
- * Replace with a real calendar/CRM integration for production use.
+ * Books a caller in. Real Google Calendar booking if GOOGLE_CALENDAR_ACCESS_TOKEN
+ * is set (see ../integrations/google-calendar.ts, wrapped in the shared
+ * resilience layer so a slow/down Calendar API can't stall the call); falls
+ * back to a clear "not configured" result otherwise so the agent can tell
+ * the caller honestly instead of pretending the booking happened.
  */
 export const bookAppointment = tool({
   description:
@@ -14,13 +18,26 @@ export const bookAppointment = tool({
     notes: z.string().optional(),
   }),
   async execute({ callerName, dateTimeIso, notes }) {
-    // Stub: pretends to book. Wire this to a real calendar/CRM.
+    const result = await bookOnGoogleCalendar(callerName, dateTimeIso, notes);
+
+    if (!result.booked) {
+      return {
+        confirmed: false,
+        callerName,
+        dateTimeIso,
+        notes: notes ?? null,
+        message: result.message,
+      };
+    }
+
     return {
       confirmed: true,
       callerName,
       dateTimeIso,
       notes: notes ?? null,
-      message: `(stub) Booked ${callerName} for ${dateTimeIso}. No real calendar connected yet.`,
+      eventId: result.eventId,
+      htmlLink: result.htmlLink,
+      message: `Booked ${callerName} for ${dateTimeIso}.`,
     };
   },
 });

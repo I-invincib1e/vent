@@ -46,19 +46,28 @@ real problem."
       DNC management
 - [x] Live product tour on the landing page using real dashboard screenshots
 
+## Integrations + hardening ✅ shipped
+
+- [x] **Integration reliability wrapper** (`integrations/resilient-fetch.ts`) — shared timeout/retry/
+      circuit-breaker layer around every external integration call, so a broken third-party API degrades
+      gracefully instead of stalling or crashing a live call turn. Per-integration breaker isolation (a dead
+      HubSpot doesn't trip Salesforce's breaker). 7 tests.
+- [x] **Pre-built integrations**, direct response to real community feedback ("lack of good integrations...
+      ability to connect/fit in"):
+  - [x] GoHighLevel (`crmSync`)
+  - [x] Salesforce (`crmSync`)
+  - [x] Google Calendar (`bookAppointment` — replaces the old always-stub with a real booking flow)
+  - [x] HubSpot (existing integration, rewrapped in the new resilience layer for consistency)
+- [x] **Repo/docs restructure** — split the single long README into focused `docs/*.md` files,
+      `CONTRIBUTING.md`, this roadmap.
+- [x] **CI** — GitHub Actions workflow (`.github/workflows/ci.yml`) running typecheck, full test suite,
+      build, and lint on every push/PR to `main`. `docs/testing.md` documents what's covered and how to add
+      tests.
+
 ## In progress
 
-- [ ] **Integration reliability wrapper** — shared timeout/retry/circuit-breaker wrapper around every
-      external integration call, so a broken third-party API degrades gracefully instead of stalling or
-      crashing a live call turn. Applies to the existing HubSpot stub and every integration below.
-- [ ] **Pre-built integrations**, direct response to real community feedback ("lack of good integrations...
-      ability to connect/fit in"):
-  - [ ] GoHighLevel
-  - [ ] Salesforce
-  - [ ] Google Calendar (replaces the current `bookAppointment` stub with a real booking flow)
-  - [ ] HubSpot (existing stub, wrapped in the new resilience layer for consistency)
-- [ ] **Repo/docs restructure** — splitting the single long README into focused `docs/*.md` files,
-      `CONTRIBUTING.md`, this roadmap — making the project easier for outside contributors to get into.
+_(nothing actively in flight right now — see "Not started" below for what's next, paused pending
+community feedback)_
 
 ## Not started — researching first
 
