@@ -3,6 +3,30 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (docs restructure, roadmap, open-core decision)
+
+### Added
+- `ROADMAP.md` — dated, checklist-based roadmap: what's shipped, in progress, and next, tied to the
+  open-core direction (ADR-015).
+- `CONTRIBUTING.md` — project structure, dev setup gotchas, testing/docs expectations, code style, for
+  anyone sending a PR.
+- `docs/` folder — split the single long README into focused files: `getting-started.md`,
+  `architecture.md`, `api-reference.md`, `security.md`, `compliance.md`, `configuration.md`,
+  `state-engine.md`, `dashboard.md`.
+- Live app URL added to the top of README.
+
+### Changed
+- README slimmed to an entry point — feature overview + links into `docs/`, `ROADMAP.md`, `CONTRIBUTING.md`
+  — instead of one long file covering everything.
+- `routes.ts` given a top-of-file header explaining the route groupings, for contributors landing there
+  first.
+
+### ADR-015 (logged, no code change)
+- Vent is an open-core framework: the self-hosted pipeline stays free and fully open forever; a paid layer
+  (managed hosting, premium integrations, hosted national DNC sync, enterprise support) can sit on top
+  later. Chosen over a pure library (weak monetization/pitch) or a pure hosted platform (abandons the
+  lock-in-free positioning the market research validated).
+
 ## [Unreleased] — 2026-07-05 (reverted named tunnel, back to quick-tunnel)
 
 ### Changed

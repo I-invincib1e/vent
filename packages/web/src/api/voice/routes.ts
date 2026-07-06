@@ -1,3 +1,19 @@
+/**
+ * Main voice API surface — everything under /api/voice/*. Mounted once in
+ * ../index.ts via `.route('/voice', voice)`.
+ *
+ * Grouped by purpose (in file order):
+ *   1. Twilio webhooks (/incoming, /status-callback, /recording-status) —
+ *      signature-validated, called by Twilio itself, not by your app code.
+ *   2. Outbound call trigger (/calls/outbound) — compliance-gated, rate-limited.
+ *   3. Ops endpoints (/calls, /calls/:id/*, /dnc, /callers) — admin-key gated,
+ *      used by the dashboard (packages/web/src/web/pages/dashboard/) and
+ *      anything you build on top (curl, your own internal tools, etc).
+ *
+ * New to this file? Start with docs/architecture.md for how a call flows
+ * through these routes end to end, then docs/api-reference.md for the full
+ * endpoint list with request/response shapes.
+ */
 import { Hono } from "hono";
 import twilioPkg from "twilio";
 const { VoiceResponse } = twilioPkg.twiml;
