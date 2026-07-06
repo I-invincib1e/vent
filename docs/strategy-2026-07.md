@@ -110,3 +110,27 @@ this round's synthesis, replacing the stale "not started" section of `ROADMAP.md
 - npm publish of `@vent/compliance` — still deferred, now arguably even more clearly the right call, since
   the audit-trail feature (below) will likely live in or alongside that package and should ship as part of
   a more complete compliance story, not before it.
+
+## Addendum — speech-to-speech (S2S) architecture, considered and rejected for now
+
+Researched whether Vent should move from its current cascaded architecture (audio → STT → text → LLM →
+text → TTS → audio) to a fused speech-to-speech model (OpenAI Realtime API, Gemini Live, Hume EVI 3 —
+one model, audio in, audio out, no text intermediate). Conclusion: **stay cascade, no action.**
+
+- S2S fuses STT+LLM+TTS into one opaque model — no inspectable text intermediate — which directly
+  conflicts with the compliance-audit-trail feature just made the #1 roadmap priority. Cascade produces
+  text artifacts as a natural byproduct; S2S needs a bolted-on parallel transcription layer to recover
+  equivalent auditability, and that parallel transcript can diverge from what was actually said
+  (documented cases exist).
+- S2S locks you into one vendor's fused model — no swapping STT/LLM/TTS independently — which conflicts
+  with Vent's provider-swappability bet (the "insurance, not headline" architecture from point 2 above).
+- Tool/function calling works on S2S models, but reliability is measurably weaker and much harder to debug
+  than cascade's inspectable text-based tool-call step — a real cost for an agent whose tools (crmSync,
+  bookAppointment, captureField) are core to the product.
+- Source note: primary research pulled from a Deepgram article — Deepgram is Vent's own STT provider and
+  has a direct incentive to favor cascade. Weighted the technical substance independently of that bias; the
+  compliance/swappability/debuggability tradeoffs are structural properties of the two architectures, not
+  vendor spin, and hold up on their own.
+
+No roadmap or ADR change from this — confirms the existing architecture is correct, doesn't introduce new
+work.
