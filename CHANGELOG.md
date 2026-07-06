@@ -3,6 +3,23 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-06 (feedback synthesis, roadmap reprioritization)
+
+### Added
+- `docs/strategy-2026-07.md` — synthesis of four rounds of real community feedback (Reddit, LinkedIn) plus
+  direct competitive research into Voximplant (a managed voice-AI orchestration platform). Turns
+  accumulated signal into concrete decisions instead of reacting comment-by-comment.
+
+### Changed
+- `ROADMAP.md` reprioritized based on that synthesis: compliance audit-trail export and per-call latency
+  breakdown promoted to top priority (concrete, cheap, most differentiated, most directly requested);
+  cross-call memory added as a lower-priority future item; v2 launch positioning explicitly notes lock-in
+  messaging should be demoted from headline to supporting proof point, per three independent, convergent
+  feedback sources.
+- Confirms (does not change) ADR-015 (open-core) and ADR-016 (self-hosted-orchestration positioning) —
+  competitive research into Voximplant's fully-managed architecture reinforces that self-hosted
+  orchestration is a genuinely distinct market position, not a marketing spin.
+
 ## [Unreleased] — 2026-07-05 (positioning fix: self-hosted orchestration, not a binary claim)
 
 ### Changed

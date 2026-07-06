@@ -7,14 +7,18 @@ aspirational. See [`DECISIONS.md`](./DECISIONS.md) for the reasoning behind any 
 ## Where this is headed
 
 Vent is an **open-core framework**, not a pure library or a pure hosted platform (see ADR-015). The
-self-hosted pipeline — telephony, STT/LLM/TTS, the state engine, the compliance primitives, the dashboard —
-stays free and fully open, forever. That's the trust mechanism for anyone who wants to self-host and verify
-every claim by reading the code. A paid layer (managed hosting, premium integrations, hosted national DNC
-sync, enterprise support) can sit on top of that later, once there's real signal it's worth building.
+self-hosted orchestration layer — call logic, the state engine, the compliance primitives, the dashboard —
+stays free and fully open, forever (AI providers and telephony remain cloud APIs by necessity — see ADR-016
+for why "self-hosted" means orchestration, not the whole stack). That's the trust mechanism for anyone who
+wants to self-host and verify every claim by reading the code. A paid layer (managed hosting, premium
+integrations, hosted national DNC sync, enterprise support) can sit on top of that later, once there's real
+signal it's worth building.
 
 Right now: pre-launch, gathering real feedback from developers who'd actually use something like this
 before committing to a bigger roadmap. Not optimizing for growth yet — optimizing for "are we solving a
-real problem."
+real problem." Four rounds of real feedback in (Reddit + LinkedIn + direct competitive research) have
+already reshaped priorities — see [`docs/strategy-2026-07.md`](./docs/strategy-2026-07.md) for the full
+synthesis and reasoning behind the reprioritization below.
 
 ## v1 — Core pipeline ✅ shipped
 
@@ -66,23 +70,43 @@ real problem."
 
 ## In progress
 
-_(nothing actively in flight right now — see "Not started" below for what's next, paused pending
-community feedback)_
+_(nothing actively in flight right now — see below for what's next, reprioritized after real community
+feedback — see `docs/strategy-2026-07.md` for the full synthesis)_
+
+## Next up — reprioritized from real feedback (four rounds, r/AI_Agents, r/VoiceAutomationAI, LinkedIn)
+
+Community feedback round produced concrete, buildable ideas faster than expected — reprioritized ahead of
+previously-planned items based on what's actually differentiated and requested:
+
+- [ ] **Compliance audit-trail export** (highest priority — new) — produce, on demand, exactly who was
+      called, when, under what consent basis, what disposition, and what the agent said. Built from data
+      already collected (`calls`/`transcripts`/`doNotCall` tables), just never packaged as an exportable
+      artifact. Directly requested, independently, as "the thing that actually kills the compliance fear."
+      Nothing comparable exists in the OSS voice-agent space per prior market research — likely to live in
+      or alongside `@vent/compliance`.
+- [ ] **Per-call latency breakdown** — instrument STT connect time, first STT result, LLM time-to-first-
+      token (already tracked, just not surfaced), TTS first-byte time, and total round-trip; show it on the
+      dashboard's call detail page instead of one console.log line. Confirmed real gap against our own code,
+      cheap to build.
+- [ ] **Cross-call memory** (lower priority) — a per-phone-number rolling summary/history, complementing
+      (not replacing) the structured `capturedState` engine. Distinct from Voximplant's `ApplicationStorage`
+      pattern in mechanism (ours should stay closer to structured facts, not raw chat-history replay) but
+      solves the same "remembers me from last time" use case, which Vent doesn't have at all today.
 
 ## Not started — researching first
 
-- [ ] **Community feedback round** — posting genuine (not launch) questions to r/selfhosted, r/AI_Agents,
-      r/LocalLLaMA to find out if the problems we think we're solving (lock-in, compliance, state/memory)
-      match what builders in this space actually experience. This round is expected to reshape items below,
-      not just validate them.
-- [ ] **v2 launch positioning** — compliance-first / self-hosted / no-lock-in framing, informed by the
-      community feedback round above. Paused until that feedback comes in.
+- [x] ~~Community feedback round~~ — done, four rounds so far, still ongoing (see `docs/strategy-2026-07.md`)
+- [ ] **v2 launch positioning** — compliance-first framing confirmed as the right lead by feedback; lock-in
+      messaging demoted from headline to supporting proof point per convergent feedback from three
+      independent sources (see `docs/strategy-2026-07.md` point 2). Still paused — waiting for the audit-
+      trail feature above to ship before writing final launch copy, since it'll likely be the headline demo.
 - [ ] **Real national DNC registry sync** — blocked on a paid FTC Subscription Account Number (SAN), a
       recurring cost not currently budgeted. Under the open-core model (ADR-015), this is a candidate for a
       paid, hosted add-on later (Vent holds one SAN, amortized across customers) rather than something every
       self-hoster needs to pay for individually.
-- [ ] **npm publish `@vent/compliance`** — explicitly deferred until the above feedback round and v1
-      positioning settle; publishing before that risks locking in an API surface before real usage tests it.
+- [ ] **npm publish `@vent/compliance`** — still deferred; now more clearly correct to wait, since the
+      audit-trail feature will likely extend this package and should ship as part of a more complete
+      compliance story, not before it.
 
 ## Later — depends on what the feedback round surfaces
 
