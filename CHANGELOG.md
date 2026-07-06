@@ -3,6 +3,15 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-05 (positioning fix: self-hosted orchestration, not a binary claim)
+
+### Changed
+- Reframed "self-hosted" across README, `docs/architecture.md`, the in-app `/docs` overview, and the
+  voice agent's own persona (what it tells a caller if asked) as "self-hosted orchestration, bring-your-own
+  AI providers" — a precise three-tier spectrum (fully local ↔ Vent ↔ fully managed) instead of an
+  unqualified claim. Directly responds to real Reddit feedback pointing out that Twilio/Deepgram/PSTN can't
+  actually be self-hosted. See ADR-016. Documentation/copy only — no functional code changes.
+
 ## [Unreleased] — 2026-07-05 (integrations, resilience layer, CI)
 
 ### Added

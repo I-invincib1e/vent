@@ -7,18 +7,26 @@
 🔗 **Live:** [voiceag-1mf8gfp-preview-4200.runable.site](https://voiceag-1mf8gfp-preview-4200.runable.site/)
 — includes the landing page, in-app docs (`/docs`), and a demo tour of the operator dashboard.
 
-Vent is a self-hosted voice agent pipeline — the open, unblocked alternative to black-box voice AI
-platforms. It wires together Twilio (telephony), Deepgram (real-time speech-to-text), an LLM (reasoning
-and tool use), and a text-to-speech engine into one live pipeline you own end to end: your code, your keys,
-your data.
+Vent is **self-hosted orchestration, bring-your-own AI providers** — not a black-box voice AI platform,
+and not a claim that everything down to the phone network runs on your own hardware (nobody self-hosts a
+cell tower). The code, the database, the call logic, the compliance rules, and the dashboard are yours,
+fully open, and run on your own infrastructure. Twilio (telephony) and Deepgram/your chosen STT provider
+remain cloud APIs by necessity — Vent wires them together, along with an LLM and a TTS engine, into one
+live pipeline where you own everything above the network layer: your code, your keys, your data.
+
+Think of it as sitting deliberately in the middle of a spectrum: fully local voice AI (your own GPU running
+a local LLM/STT/TTS, real but a different product with real latency/quality tradeoffs) on one end, fully
+managed platforms (Vapi, Retell — zero infra, zero control) on the other. Vent self-hosts the orchestration
+layer and lets you bring your own AI/telephony providers, rather than chasing either extreme. See
+[`DECISIONS.md`](./DECISIONS.md) ADR-016 for the full reasoning.
 
 Built with enterprise adoption in mind: compliance (TCPA/DNC/consent/HIPAA/GDPR) is enforced automatically,
 not left for an integrator to remember; every provider (LLM, TTS) is swappable behind an abstraction layer;
 and every consequential decision is recorded in [`DECISIONS.md`](./DECISIONS.md) so anyone adopting this
 repo can understand *why* it works the way it does, not just *what* the code does.
 
-**Vent is an open-core framework** — the self-hosted pipeline below is free and fully open, forever. See
-[`DECISIONS.md`](./DECISIONS.md) ADR-015 for what that means and why.
+**Vent is an open-core framework** — the self-hosted orchestration layer below is free and fully open,
+forever. See [`DECISIONS.md`](./DECISIONS.md) ADR-015 for what that means and why.
 
 ## What it does
 

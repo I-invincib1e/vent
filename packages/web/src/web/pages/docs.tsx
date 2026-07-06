@@ -74,10 +74,12 @@ function DocsPage() {
           <section id="overview" className="scroll-mt-20">
             <h2 className="text-2xl font-bold mb-3">Overview</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              This is a self-hosted voice agent pipeline — your own infrastructure for phone-based AI agents,
-              built from Twilio (telephony), Deepgram (speech-to-text), an LLM (reasoning + tool use), and
-              ElevenLabs (text-to-speech). No managed voice-agent product sits in the middle — every stage
-              runs on code you own in this repo.
+              This is self-hosted orchestration, bring-your-own AI providers — your own code, database, and
+              call logic, wired to Twilio (telephony), Deepgram (speech-to-text), an LLM (reasoning + tool
+              use), and ElevenLabs (text-to-speech). Those provider calls stay real cloud APIs — no one
+              self-hosts a phone network or frontier-model inference — but no managed voice-agent platform
+              sits in the middle: every stage of the pipeline runs on code you own in this repo, and you
+              pick which provider fills each slot.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-4">
               It supports both directions: people can call your Twilio number and talk to the agent
