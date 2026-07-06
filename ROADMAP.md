@@ -68,6 +68,16 @@ synthesis and reasoning behind the reprioritization below.
       build, and lint on every push/PR to `main`. `docs/testing.md` documents what's covered and how to add
       tests.
 
+## Compliance audit-trail export ✅ shipped
+
+- [x] **Compliance audit-trail export** — `@vent/compliance`'s `audit-trail.ts`: assembles, per call or per
+      phone number, exactly who was called, when, under what disposition, current DNC status, whether the
+      recording/AI disclosure was actually spoken (not just configured), and the full transcript. Exportable
+      as plain text (hand-to-a-lawyer ready) or JSON. New endpoints (`GET /calls/:id/audit`,
+      `GET /callers/:phoneNumber/audit`) and dashboard surfaces (export button on call detail, new
+      `/dashboard/audit` page). Directly requested, independently, as "the thing that actually kills the
+      compliance fear" — see ADR-017. 10 new tests, 74 total across both packages, regression-tested live.
+
 ## In progress
 
 _(nothing actively in flight right now — see below for what's next, reprioritized after real community
@@ -75,19 +85,10 @@ feedback — see `docs/strategy-2026-07.md` for the full synthesis)_
 
 ## Next up — reprioritized from real feedback (four rounds, r/AI_Agents, r/VoiceAutomationAI, LinkedIn)
 
-Community feedback round produced concrete, buildable ideas faster than expected — reprioritized ahead of
-previously-planned items based on what's actually differentiated and requested:
-
-- [ ] **Compliance audit-trail export** (highest priority — new) — produce, on demand, exactly who was
-      called, when, under what consent basis, what disposition, and what the agent said. Built from data
-      already collected (`calls`/`transcripts`/`doNotCall` tables), just never packaged as an exportable
-      artifact. Directly requested, independently, as "the thing that actually kills the compliance fear."
-      Nothing comparable exists in the OSS voice-agent space per prior market research — likely to live in
-      or alongside `@vent/compliance`.
 - [ ] **Per-call latency breakdown** — instrument STT connect time, first STT result, LLM time-to-first-
       token (already tracked, just not surfaced), TTS first-byte time, and total round-trip; show it on the
       dashboard's call detail page instead of one console.log line. Confirmed real gap against our own code,
-      cheap to build.
+      cheap to build. Now the top remaining priority.
 - [ ] **Cross-call memory** (lower priority) — a per-phone-number rolling summary/history, complementing
       (not replacing) the structured `capturedState` engine. Distinct from Voximplant's `ApplicationStorage`
       pattern in mechanism (ours should stay closer to structured facts, not raw chat-history replay) but
@@ -104,9 +105,9 @@ previously-planned items based on what's actually differentiated and requested:
       recurring cost not currently budgeted. Under the open-core model (ADR-015), this is a candidate for a
       paid, hosted add-on later (Vent holds one SAN, amortized across customers) rather than something every
       self-hoster needs to pay for individually.
-- [ ] **npm publish `@vent/compliance`** — still deferred; now more clearly correct to wait, since the
-      audit-trail feature will likely extend this package and should ship as part of a more complete
-      compliance story, not before it.
+- [ ] **npm publish `@vent/compliance`** — still deferred until v1 positioning fully settles. The audit-
+      trail feature (now shipped) makes this package a more complete story than it was, but the decision to
+      wait was about launch timing/positioning, not feature completeness — no change to when this happens.
 
 ## Later — depends on what the feedback round surfaces
 

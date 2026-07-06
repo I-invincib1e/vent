@@ -8,6 +8,7 @@
    import { CallsListPage } from "./pages/dashboard/calls-list";
    import { CallDetailPage } from "./pages/dashboard/call-detail";
    import { DncPage } from "./pages/dashboard/dnc";
+   import { AuditPage } from "./pages/dashboard/audit";
 
    function Dashboard({ children }: { children: React.ReactNode }) {
      return (
@@ -31,6 +32,9 @@
            </Route>
            <Route path="/dashboard/dnc">
              <Dashboard><DncPage /></Dashboard>
+           </Route>
+           <Route path="/dashboard/audit">
+             <Dashboard><AuditPage /></Dashboard>
            </Route>
          </Switch>                                                                                                        
          {/* Do not remove — off by default, activated by parent iframe via postMessage */}                                                  

@@ -1,9 +1,30 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { motion } from "motion/react";
-import { ArrowLeft, Sparkles, Wrench, PlayCircle } from "lucide-react";
+import { ArrowLeft, Sparkles, Wrench, PlayCircle, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api";
 import { adminHeaders } from "../../lib/admin-key";
+
+/**
+ * Downloads the compliance audit trail for this call as a plain-text file —
+ * who was called, when, disclosure/consent status, disposition, DNC status,
+ * and the full transcript, assembled server-side (see @vent/compliance's
+ * audit-trail.ts). This is the direct answer to real user feedback that the
+ * thing that actually kills the compliance fear is being able to produce
+ * this on demand, not another warning.
+ */
+async function downloadAudit(callId: string) {
+  const res = await fetch(`/api/voice/calls/${callId}/audit?format=text`, { headers: adminHeaders() });
+  if (!res.ok) return;
+  const text = await res.text();
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `vent-audit-call-${callId}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function CallDetailPage() {
   const [, params] = useRoute("/dashboard/calls/:id");
@@ -58,17 +79,26 @@ export function CallDetailPage() {
             {row.direction} · {row.status}
             {row.disposition ? ` · ${row.disposition}` : ""}
           </p>
-          {row.recordingUrl && (
-            <a
-              href={row.recordingUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 mt-3 text-sm text-ember hover:underline"
+          <div className="flex items-center gap-4 mt-3">
+            {row.recordingUrl && (
+              <a
+                href={row.recordingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-ember hover:underline"
+              >
+                <PlayCircle className="size-4" />
+                Play recording
+              </a>
+            )}
+            <button
+              onClick={() => downloadAudit(String(row.id))}
+              className="inline-flex items-center gap-1.5 text-sm text-signal hover:underline"
             >
-              <PlayCircle className="size-4" />
-              Play recording
-            </a>
-          )}
+              <ShieldCheck className="size-4" />
+              Export compliance audit
+            </button>
+          </div>
         </div>
       )}
 

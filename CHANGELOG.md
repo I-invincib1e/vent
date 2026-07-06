@@ -3,6 +3,23 @@
 All notable changes to Vent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
+## [Unreleased] — 2026-07-06 (compliance audit-trail export)
+
+### Added
+- Compliance audit-trail module in `@vent/compliance` (`audit-trail.ts`) — `buildCallAuditRecord`,
+  `buildPhoneNumberAuditTrail`, `renderAuditTrailText`. Assembles, per call, exactly who was called, when,
+  under what disposition, current DNC status, whether the recording/AI disclosure was actually spoken (not
+  just configured), and the full transcript — the direct answer to real community feedback that this is
+  what actually kills the TCPA/DNC compliance fear, not another warning. See ADR-017.
+- Two new admin-key-gated endpoints: `GET /api/voice/calls/:id/audit` and
+  `GET /api/voice/callers/:phoneNumber/audit`, both supporting `?format=text` for a plain-text export
+  suitable for handing to a lawyer as-is (JSON by default).
+- Dashboard: "Export compliance audit" button on the call-detail page; new `/dashboard/audit` page for
+  looking up every call involving a number and downloading the combined trail.
+- 10 new tests (`audit-trail.test.ts`) — 74 tests total across both packages, all passing. Typecheck,
+  build, and lint all clean. Regression-tested live against real call data (auth gating, 404 handling,
+  empty-result handling, disclosure detection, multi-call ordering).
+
 ## [Unreleased] — 2026-07-06 (feedback synthesis, roadmap reprioritization)
 
 ### Added

@@ -1,11 +1,12 @@
 import { Link, useLocation } from "wouter";
 import { motion } from "motion/react";
-import { PhoneCall, ShieldOff, ArrowLeft } from "lucide-react";
+import { PhoneCall, ShieldOff, ShieldCheck, ArrowLeft } from "lucide-react";
 import { clearAdminKey } from "../../lib/admin-key";
 
 const NAV = [
   { href: "/dashboard", label: "Calls", icon: PhoneCall, match: /^\/dashboard(\/calls\/.*)?$/ },
   { href: "/dashboard/dnc", label: "Do Not Call", icon: ShieldOff, match: /^\/dashboard\/dnc$/ },
+  { href: "/dashboard/audit", label: "Audit", icon: ShieldCheck, match: /^\/dashboard\/audit$/ },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

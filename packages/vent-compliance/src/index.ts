@@ -10,6 +10,7 @@ export * from "./gdpr";
 export * from "./storage";
 export * from "./adapters/memory";
 export * from "./national-dnc";
+export * from "./audit-trail";
 
 export type OutboundComplianceResult =
   | { allowed: true }

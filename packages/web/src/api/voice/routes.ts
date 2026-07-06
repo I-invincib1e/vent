@@ -29,8 +29,12 @@ import {
   removeFromDoNotCallList,
   listDoNotCall,
   eraseCallerData,
+  getDisclosureLine,
+  buildCallAuditRecord,
+  buildPhoneNumberAuditTrail,
+  renderAuditTrailText,
 } from "@vent/compliance";
-import { dncAdapter, callLogAdapter } from "./compliance/adapters";
+import { dncAdapter, callLogAdapter, callAuditAdapter } from "./compliance/adapters";
 import { runWorkflowForOutcome } from "./workflows/engine";
 import type { WorkflowOutcome } from "./workflows/types";
 import { requireAdminKey } from "./middleware/admin-auth";
@@ -224,6 +228,36 @@ export const voice = new Hono()
     const { toolCalls } = await import("../database/schema");
     const rows = await db.select().from(toolCalls).where(eq(toolCalls.callId, id));
     return c.json({ toolCalls: rows }, 200);
+  })
+
+  // Compliance audit trail for one call — who was called, when, under what
+  // consent (was the recording/AI disclosure actually spoken, not just
+  // configured), what disposition, current DNC status, and the full
+  // transcript, assembled into a single record. Direct answer to real user
+  // feedback: "the thing that kills the compliance fear is being able to
+  // produce this on demand" (see DECISIONS.md / ROADMAP.md). ?format=text
+  // returns a plain-text version suitable for handing to a lawyer/compliance
+  // officer as-is; default is JSON for programmatic use.
+  .get("/calls/:id/audit", requireAdminKey, async (c) => {
+    const id = c.req.param("id");
+    const record = await buildCallAuditRecord(id, callAuditAdapter, dncAdapter, getDisclosureLine());
+    if (!record) return c.json({ error: "call not found" }, 404);
+    if (c.req.query("format") === "text") {
+      return c.text(renderAuditTrailText([record]), 200);
+    }
+    return c.json({ audit: record }, 200);
+  })
+
+  // Same audit trail, but for every call involving a phone number — the more
+  // common real request ("show me everything about how this number was
+  // contacted"), not just one call id.
+  .get("/callers/:phoneNumber/audit", requireAdminKey, async (c) => {
+    const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
+    const trail = await buildPhoneNumberAuditTrail(phoneNumber, callAuditAdapter, dncAdapter, getDisclosureLine());
+    if (c.req.query("format") === "text") {
+      return c.text(renderAuditTrailText(trail), 200);
+    }
+    return c.json({ audit: trail }, 200);
   })
 
   // Live call-control: current status/metadata for one call, and a force-end
