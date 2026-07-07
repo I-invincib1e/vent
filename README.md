@@ -113,4 +113,6 @@ expectations, and code style.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+Fair-code, under the **Vent Sustainable Use License** (based on the Sustainable Use License used by n8n) —
+see [LICENSE](./LICENSE). Free to self-host, modify, and use for your own internal or personal purposes,
+forever. Not licensed for repackaging as a competing hosted/managed service — see `DECISIONS.md` ADR-018.
