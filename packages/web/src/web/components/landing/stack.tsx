@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 
-const stack = ["Twilio", "Deepgram", "ElevenLabs", "LLM Gateway", "Turso", "n8n / Zapier"];
+const stack = ["Twilio", "Deepgram", "ElevenLabs / Cartesia", "AI Gateway / Groq", "Turso", "n8n / Zapier"];
 
 export function Stack() {
   return (

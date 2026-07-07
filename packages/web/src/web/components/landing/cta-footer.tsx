@@ -64,6 +64,9 @@ export function CtaFooter() {
           {" · "}
           {desktop ? `Desktop (${desktop.platform})` : "Web"}
         </div>
+        <p className="mt-4 font-mono text-xs text-paper/40">
+          Fair-code, free to self-host forever — Vent Sustainable Use License
+        </p>
       </div>
     </footer>
   );

@@ -4,6 +4,8 @@ import { Pipeline } from "../components/landing/pipeline";
 import { Features } from "../components/landing/features";
 import { CodePreview } from "../components/landing/code-preview";
 import { ProductTour } from "../components/landing/product-tour";
+import { Shipped } from "../components/landing/shipped";
+import { Roadmap } from "../components/landing/roadmap";
 import { Stack } from "../components/landing/stack";
 import { CtaFooter } from "../components/landing/cta-footer";
 
@@ -17,6 +19,8 @@ function Index() {
       <Features />
       <CodePreview />
       <ProductTour />
+      <Shipped />
+      <Roadmap />
       <CtaFooter />
     </div>
   );
