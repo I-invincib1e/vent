@@ -7,7 +7,7 @@ const shipped = [
     icon: ShieldCheck,
     title: "Compliance, enforced not promised",
     story:
-      "TCPA calling-window + Do-Not-Call checks on every outbound call, spoken AI/recording disclosure by default, a HIPAA boot guardrail, and GDPR retention purge + right-to-erasure — all in code, in @vent/compliance, usable outside Vent too.",
+      "TCPA calling-window + Do-Not-Call checks on every outbound call, spoken AI/recording disclosure by default, a HIPAA boot guardrail, and GDPR retention purge + right-to-erasure — all in code, in @openvent/compliance, usable outside OpenVent too.",
   },
   {
     icon: FileClock,

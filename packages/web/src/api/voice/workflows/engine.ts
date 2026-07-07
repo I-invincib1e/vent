@@ -1,6 +1,6 @@
 import { db } from "../../database";
 import { scheduledCalls } from "../../database/schema";
-import { addToDoNotCallList } from "@vent/compliance";
+import { addToDoNotCallList } from "@openvent/compliance";
 import { dncAdapter } from "../compliance/adapters";
 import { dispatchWebhook, resolveWebhookUrl } from "../webhooks";
 import { twilioClient } from "../twilio-client";

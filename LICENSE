@@ -1,18 +1,18 @@
 # License
 
-Vent is fair-code — free to self-host, modify, and use for your own internal business or personal purposes,
+OpenVent is fair-code — free to self-host, modify, and use for your own internal business or personal purposes,
 but not to resell as a competing hosted/managed service without a commercial license from the licensor. This
 is the same model used by n8n, Supabase, and other open-core infrastructure projects: free and fully open to
 verify and self-host, protected against being repackaged and sold by someone else before we do it ourselves.
 
 Content of branches other than the main branch (i.e. "main") are not licensed. All third-party components
-incorporated into the Vent software are licensed under the original license provided by the owner of the
-applicable component. Content outside of those exceptions is available under the "Vent Sustainable Use
+incorporated into the OpenVent software are licensed under the original license provided by the owner of the
+applicable component. Content outside of those exceptions is available under the "OpenVent Sustainable Use
 License" below.
 
-## Vent Sustainable Use License
+## OpenVent Sustainable Use License
 
-Version 1.0 — based on the Sustainable Use License (n8n, sustainableuselicense.com), adapted for Vent.
+Version 1.0 — based on the Sustainable Use License (n8n, sustainableuselicense.com), adapted for OpenVent.
 
 ### Acceptance
 
@@ -29,7 +29,7 @@ to the limitations below.
 You may use or modify the software only for your own internal business purposes or for non-commercial or
 personal use. You may distribute the software or provide it to others only if you do so free of charge for
 non-commercial purposes. You may not offer the software, or a modified or hosted version of it, to third
-parties as a commercial product or managed/hosted service (e.g. a "Vent Cloud" competitor) without a separate
+parties as a commercial product or managed/hosted service (e.g. a "OpenVent Cloud" competitor) without a separate
 commercial license from the licensor. You may not alter, remove, or obscure any licensing, copyright, or other
 notices of the licensor in the software. Any use of the licensor's trademarks is subject to applicable law.
 

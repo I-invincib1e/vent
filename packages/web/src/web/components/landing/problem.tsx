@@ -37,7 +37,7 @@ export function Problem() {
         <div className="grid grid-cols-3 bg-paper-2 font-mono text-xs uppercase tracking-wider text-ink-soft">
           <div className="p-4" />
           <div className="p-4">Black-box platform</div>
-          <div className="p-4 text-signal">Vent</div>
+          <div className="p-4 text-signal">OpenVent</div>
         </div>
         {rows.map(([label, black, vent], i) => (
           <motion.div

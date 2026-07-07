@@ -6,7 +6,7 @@ import type { CallLogStorageAdapter, CallRecord, DncStorageAdapter, DoNotCallEnt
  * matter. Not suitable for production (state is lost on restart, doesn't
  * share across instances). Swap for a real database-backed adapter before
  * shipping — see the package README for the Drizzle/Turso example used by
- * the Vent reference app.
+ * the OpenVent reference app.
  */
 export function createMemoryDncAdapter(): DncStorageAdapter {
   const entries = new Map<string, DoNotCallEntry>();

@@ -3,7 +3,7 @@
  * bring your own persistence by implementing this interface against
  * whatever you already use (Drizzle/Postgres, Mongo, a flat file, Redis,
  * an in-memory Map for tests, etc). See adapters/memory.ts for a minimal
- * reference implementation, and the Vent reference app
+ * reference implementation, and the OpenVent reference app
  * (voice/compliance/adapter.ts) for a production Drizzle/Turso example.
  */
 

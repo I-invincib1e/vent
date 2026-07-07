@@ -68,7 +68,7 @@ export function ProductTour() {
             transition={{ duration: 0.35 }}
           >
             <div className="rounded-xl border border-border overflow-hidden shadow-sm">
-              <img src={activeTab.image} alt={`Vent dashboard — ${activeTab.label}`} className="w-full block" />
+              <img src={activeTab.image} alt={`OpenVent dashboard — ${activeTab.label}`} className="w-full block" />
             </div>
             <p className="mt-4 text-sm text-ink-soft leading-relaxed max-w-xl">{activeTab.caption}</p>
           </motion.div>

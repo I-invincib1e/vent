@@ -1,7 +1,7 @@
-# Vent — Design System
+# OpenVent — Design System
 
 ## Identity
-**Vent** — a voice needs a vent to escape through: a clean, unblocked opening, yours to control.
+**OpenVent** — a voice needs a vent to escape through: a clean, unblocked opening, yours to control.
 This is the open, self-hosted alternative to sealed-off black-box voice-agent platforms.
 
 ## Palette (warm, editorial — paper/ink/ember family, own identity)

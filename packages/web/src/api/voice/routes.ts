@@ -33,7 +33,7 @@ import {
   buildCallAuditRecord,
   buildPhoneNumberAuditTrail,
   renderAuditTrailText,
-} from "@vent/compliance";
+} from "@openvent/compliance";
 import { dncAdapter, callLogAdapter, callAuditAdapter } from "./compliance/adapters";
 import { runWorkflowForOutcome } from "./workflows/engine";
 import type { WorkflowOutcome } from "./workflows/types";
@@ -105,7 +105,7 @@ export const voice = new Hono()
     const from = process.env.TWILIO_PHONE_NUMBER;
     if (!from) return c.json({ error: "TWILIO_PHONE_NUMBER is not configured" }, 500);
 
-    // Compliance gates — enforced automatically via @vent/compliance, no
+    // Compliance gates — enforced automatically via @openvent/compliance, no
     // manual step required. A call that fails either check is rejected and
     // never dials.
     const compliance = await checkOutboundCallCompliance(to, dncAdapter);
@@ -300,7 +300,7 @@ export const voice = new Hono()
   })
 
   // Compliance: Do-Not-Call list management — enforced automatically on
-  // every outbound call (POST /calls/outbound) via @vent/compliance.
+  // every outbound call (POST /calls/outbound) via @openvent/compliance.
   .get("/dnc", requireAdminKey, async (c) => {
     const rows = await listDoNotCall(dncAdapter);
     return c.json({ doNotCall: rows }, 200);
@@ -325,7 +325,7 @@ export const voice = new Hono()
   })
 
   // Compliance: GDPR right-to-erasure — deletes all call data tied to a
-  // phone number on request, via @vent/compliance.
+  // phone number on request, via @openvent/compliance.
   .delete("/callers/:phoneNumber", requireAdminKey, async (c) => {
     const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
     const result = await eraseCallerData(callLogAdapter, phoneNumber);

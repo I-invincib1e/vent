@@ -26,7 +26,7 @@ export function Roadmap() {
         We're not betting this beats Vapi or Retell today. It doesn't.
       </h2>
       <p className="mt-6 text-ink-soft leading-relaxed max-w-2xl">
-        They're funded, further along, and battle-tested at a scale Vent hasn't seen yet. What Vent bets on
+        They're funded, further along, and battle-tested at a scale OpenVent hasn't seen yet. What OpenVent bets on
         is different: you get to read every line before you trust it, and it gets better in the open, in
         public, with real feedback — not behind a roadmap you don't get a vote on.
       </p>

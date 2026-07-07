@@ -6,7 +6,7 @@ import { createMiddleware } from "hono/factory";
  * zero authentication — anyone who could reach the public URL could read
  * call transcripts, manage the DNC list, or force-end a live call.
  *
- * Checks the `X-Vent-Admin-Key` header against `ADMIN_API_KEY`. If
+ * Checks the `X-OpenVent-Admin-Key` header against `ADMIN_API_KEY`. If
  * ADMIN_API_KEY is not set, the gate is a no-op (logs a warning once) so
  * local development isn't blocked — but this must be set before exposing
  * the app beyond local testing.
@@ -27,9 +27,9 @@ export const requireAdminKey = createMiddleware(async (c, next) => {
     return next();
   }
 
-  const providedKey = c.req.header("X-Vent-Admin-Key");
+  const providedKey = c.req.header("X-OpenVent-Admin-Key");
   if (providedKey !== configuredKey) {
-    return c.json({ error: "Unauthorized — missing or invalid X-Vent-Admin-Key header" }, 401);
+    return c.json({ error: "Unauthorized — missing or invalid X-OpenVent-Admin-Key header" }, 401);
   }
 
   return next();

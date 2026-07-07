@@ -2,11 +2,11 @@ import type { DncStorageAdapter } from "./storage";
 
 /**
  * Compliance audit trail — the direct answer to a piece of real user
- * feedback (see Vent's DECISIONS.md / ROADMAP.md, feedback round 3): the
+ * feedback (see OpenVent's DECISIONS.md / ROADMAP.md, feedback round 3): the
  * thing that actually kills the TCPA/DNC compliance fear isn't another
  * warning banner, it's being able to produce, on demand, exactly who was
  * called, when, under what consent basis, what disposition, and what the
- * agent said. Vent already collects all of this (calls, transcripts,
+ * agent said. OpenVent already collects all of this (calls, transcripts,
  * disposition, DNC status) — this module is the missing step that packages
  * it into a single exportable, audit-ready record instead of leaving an
  * operator to reconstruct it by hand from multiple tables under pressure
@@ -44,7 +44,7 @@ export type CallAuditRecord = {
 
 /**
  * Minimal surface this module needs from your call-log storage to assemble
- * an audit record — implement against your own database (see the Vent
+ * an audit record — implement against your own database (see the OpenVent
  * reference app's Drizzle adapter for a production example, or
  * adapters/memory.ts for tests).
  */

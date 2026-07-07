@@ -1,6 +1,6 @@
 # Testing
 
-Vent uses `bun:test` — no separate test runner, no mocking framework. Tests live next to the code they
+OpenVent uses `bun:test` — no separate test runner, no mocking framework. Tests live next to the code they
 test (`foo.ts` → `foo.test.ts`), following Bun's convention.
 
 ## Running tests
@@ -10,7 +10,7 @@ test (`foo.ts` → `foo.test.ts`), following Bun's convention.
 cd packages/web && bun run test
 
 # The standalone compliance package
-cd packages/vent-compliance && bun run test
+cd packages/openvent-compliance && bun run test
 ```
 
 Both are plain `bun test` under the hood (see each package's `package.json`) — you can also run
@@ -29,7 +29,7 @@ Both are plain `bun test` under the hood (see each package's `package.json`) —
 | E.164 validation | `src/api/voice/validation.test.ts` | Valid/invalid phone number formats |
 | **Integration resilience** | `src/api/voice/integrations/resilient-fetch.test.ts` | Timeout detection, retry-then-succeed, retry-then-fail, circuit breaker opening/cooldown, per-integration isolation, failure-count reset on success |
 | GoHighLevel / Salesforce / HubSpot / Google Calendar | `src/api/voice/integrations/*.test.ts` | Not-configured fallback (missing env vars), successful sync/booking, graceful degradation when the third-party API errors or is unreachable |
-| Compliance package | `packages/vent-compliance/src/*.test.ts` | Calling-window resolution, DNC add/check, consent disclosure toggle, HIPAA boot guardrail, GDPR retention purge + erasure, national-DNC adapter shape |
+| Compliance package | `packages/openvent-compliance/src/*.test.ts` | Calling-window resolution, DNC add/check, consent disclosure toggle, HIPAA boot guardrail, GDPR retention purge + erasure, national-DNC adapter shape |
 
 64 tests total across both packages as of this writing (see `CHANGELOG.md` for the running count as it
 grows).
@@ -42,7 +42,7 @@ grows).
   specific checks run each time) rather than unit tests. A proper integration-test harness for this is
   open territory — see `ROADMAP.md`.
 - **OAuth flows** for Salesforce/Google Calendar — these integrations assume you already have a valid
-  access token in the environment; the token-acquisition flow itself isn't Vent's responsibility and isn't
+  access token in the environment; the token-acquisition flow itself isn't OpenVent's responsibility and isn't
   tested here.
 
 ## Writing new tests

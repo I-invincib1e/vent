@@ -7,7 +7,7 @@ const features = [
     icon: Zap,
     title: "Barge-in, handled",
     story:
-      "Mid-sentence, the caller jumps in. Vent hears it instantly, clears the agent's in-flight reply, and listens — the way a real conversation actually works.",
+      "Mid-sentence, the caller jumps in. OpenVent hears it instantly, clears the agent's in-flight reply, and listens — the way a real conversation actually works.",
   },
   {
     icon: Wrench,

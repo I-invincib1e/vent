@@ -1,12 +1,12 @@
 # Changelog
 
-All notable changes to Vent are documented here. Format loosely follows
+All notable changes to OpenVent are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/) — dated entries, newest first.
 
 ## [Unreleased] — 2026-07-06 (compliance audit-trail export)
 
 ### Added
-- Compliance audit-trail module in `@vent/compliance` (`audit-trail.ts`) — `buildCallAuditRecord`,
+- Compliance audit-trail module in `@openvent/compliance` (`audit-trail.ts`) — `buildCallAuditRecord`,
   `buildPhoneNumberAuditTrail`, `renderAuditTrailText`. Assembles, per call, exactly who was called, when,
   under what disposition, current DNC status, whether the recording/AI disclosure was actually spoken (not
   just configured), and the full transcript — the direct answer to real community feedback that this is
@@ -42,7 +42,7 @@ All notable changes to Vent are documented here. Format loosely follows
 ### Changed
 - Reframed "self-hosted" across README, `docs/architecture.md`, the in-app `/docs` overview, and the
   voice agent's own persona (what it tells a caller if asked) as "self-hosted orchestration, bring-your-own
-  AI providers" — a precise three-tier spectrum (fully local ↔ Vent ↔ fully managed) instead of an
+  AI providers" — a precise three-tier spectrum (fully local ↔ OpenVent ↔ fully managed) instead of an
   unqualified claim. Directly responds to real Reddit feedback pointing out that Twilio/Deepgram/PSTN can't
   actually be self-hosted. See ADR-016. Documentation/copy only — no functional code changes.
 
@@ -87,7 +87,7 @@ All notable changes to Vent are documented here. Format loosely follows
   first.
 
 ### ADR-015 (logged, no code change)
-- Vent is an open-core framework: the self-hosted pipeline stays free and fully open forever; a paid layer
+- OpenVent is an open-core framework: the self-hosted pipeline stays free and fully open forever; a paid layer
   (managed hosting, premium integrations, hosted national DNC sync, enterprise support) can sit on top
   later. Chosen over a pure library (weak monetization/pitch) or a pure hosted platform (abandons the
   lock-in-free positioning the market research validated).
@@ -137,7 +137,7 @@ All notable changes to Vent are documented here. Format loosely follows
 
 ### Added
 - Admin-key auth (`requireAdminKey` middleware, `packages/web/src/api/voice/middleware/admin-auth.ts`) on
-  all ops endpoints (`/calls`, `/dnc`, `/callers`, `/webhooks/test`) — checks `X-Vent-Admin-Key` header
+  all ops endpoints (`/calls`, `/dnc`, `/callers`, `/webhooks/test`) — checks `X-OpenVent-Admin-Key` header
   against `ADMIN_API_KEY`. Warns loudly at startup if unset instead of crashing (unauthenticated mode is
   fine for local dev, not for anything public).
 - Twilio signature validation (`requireTwilioSignature` middleware,
@@ -152,7 +152,7 @@ All notable changes to Vent are documented here. Format loosely follows
   `packages/web/src/api/voice/middleware/rate-limit.ts`) — fixed-window guard, `OUTBOUND_CALL_RATE_LIMIT`
   (default 30) per `OUTBOUND_CALL_RATE_WINDOW_MS` (default 60000ms). Additive to, not a replacement for,
   the DNC/calling-window compliance checks.
-- National DNC registry adapter shape (`packages/vent-compliance/src/national-dnc.ts`) —
+- National DNC registry adapter shape (`packages/openvent-compliance/src/national-dnc.ts`) —
   `syncNationalDncRegistry`, `NationalRegistryFetcher` type, and `noopNationalRegistryFetcher`. Documented
   stub only; no live registry sync (would require a real SAN, which can't be provisioned in this sandbox).
 - Tunnel supervisor script (`scripts/tunnel-supervisor.sh`) — monitors the `cloudflared` quick-tunnel
@@ -161,7 +161,7 @@ All notable changes to Vent are documented here. Format loosely follows
   named tunnel or persistent domain (see ADR-008).
 - Test coverage: 12 new tests across `validation`, `number-config`, `session-store`,
   `llm/index`, `tts/index`, `workflows/index` (web app, now 25 total), plus 2 new tests in
-  `vent-compliance` for the national DNC adapter (now 15 total). 40 tests passing across both packages.
+  `openvent-compliance` for the national DNC adapter (now 15 total). 40 tests passing across both packages.
 
 ### Fixed
 - **Real SMS delivery.** `sendSms` in `workflows/engine.ts` now calls `twilioClient.messages.create()` —
@@ -183,19 +183,19 @@ All notable changes to Vent are documented here. Format loosely follows
 ## [Unreleased] — 2026-07-05 (compliance layer extracted into a standalone package)
 
 ### Added
-- New workspace package `packages/vent-compliance` (`@vent/compliance`) — the TCPA calling-window check,
+- New workspace package `packages/openvent-compliance` (`@openvent/compliance`) — the TCPA calling-window check,
   Do-Not-Call enforcement, consent/AI disclosure injection, HIPAA boot-time guardrail, and GDPR
   retention/erasure modules, extracted with zero dependency on Twilio, Bun/Hono, or any specific database.
   Storage-backed modules now take a small adapter interface (`DncStorageAdapter`, `CallLogStorageAdapter`)
   instead of importing a database directly; in-memory reference adapters ship for quick starts and tests.
   New `checkOutboundCallCompliance()` convenience helper runs the DNC + calling-window gates together in
-  one call. 13 unit tests included, all passing standalone (no Vent-specific code required).
-- `packages/web/src/api/voice/compliance/adapters.ts` — Drizzle/Turso adapters wiring Vent's own schema
+  one call. 13 unit tests included, all passing standalone (no OpenVent-specific code required).
+- `packages/web/src/api/voice/compliance/adapters.ts` — Drizzle/Turso adapters wiring OpenVent's own schema
   into the new package; this is the only app-specific glue code the extraction required.
 
 ### Changed
-- Vent's app-level compliance code (`voice/compliance/{calling-window,dnc,consent,hipaa,gdpr}.ts`) removed
-  and replaced by imports from `@vent/compliance` throughout (`routes.ts`, `agent.ts`, `server.ts`,
+- OpenVent's app-level compliance code (`voice/compliance/{calling-window,dnc,consent,hipaa,gdpr}.ts`) removed
+  and replaced by imports from `@openvent/compliance` throughout (`routes.ts`, `agent.ts`, `server.ts`,
   `api/index.ts`, `workflows/engine.ts`, `workflows/scheduler.ts`) — proves the extraction works standalone
   by dogfooding it in the real, already-working app rather than leaving it untested in isolation.
 
@@ -211,14 +211,14 @@ All notable changes to Vent are documented here. Format loosely follows
   hyperscaler CCAI offerings, CRM-embedded voice AI, legacy CCaaS incumbents) — see the delivered market
   report for the full comparison matrix and compliance benchmark. Key finding: every serious AI-native
   competitor (ElevenLabs Agents, Vapi, Retell AI, Bland AI, Synthflow) already ships SOC 2 + HIPAA (several
-  with GDPR/PCI-DSS/ISO27001); Vent's current HIPAA support is a boot-time guardrail, not a certification.
+  with GDPR/PCI-DSS/ISO27001); OpenVent's current HIPAA support is a boot-time guardrail, not a certification.
 - Evaluated adopting an open-source orchestration framework (Pipecat, LiveKit Agents, TEN Framework,
-  Vocode) instead of maintaining Vent's own STT→LLM→TTS pipeline. Investigated LiveKit Agents specifically
+  Vocode) instead of maintaining OpenVent's own STT→LLM→TTS pipeline. Investigated LiveKit Agents specifically
   (TypeScript SDK, documented Twilio integration) and ultimately **rejected it** — both its Cloud and
-  self-hosted deployment options reintroduce vendor/infrastructure dependencies Vent is built to remove,
-  and its WebRTC/SIP telephony model is architecturally mismatched with Vent's existing Twilio Media
+  self-hosted deployment options reintroduce vendor/infrastructure dependencies OpenVent is built to remove,
+  and its WebRTC/SIP telephony model is architecturally mismatched with OpenVent's existing Twilio Media
   Streams (WebSocket) integration. See `DECISIONS.md` ADR-009 for the full reasoning. No code was changed
-  as part of this evaluation — Vent's existing direct pipeline continues unmodified.
+  as part of this evaluation — OpenVent's existing direct pipeline continues unmodified.
 
 ## [Unreleased] — 2026-07-04 (v2: compliance, providers, control, workflows)
 
@@ -269,7 +269,7 @@ All notable changes to Vent are documented here. Format loosely follows
   needed, same zero-conversion path ElevenLabs had). Both remain available via `TTS_PROVIDER`.
 - ElevenLabs and Cartesia integrations refactored behind a shared `ConnectTts` interface
   (`voice/tts/types.ts`) so adding future TTS providers requires no changes to the call pipeline
-- Agent's default persona rewritten: knows what Vent is (answers "what are you" without a tool call),
+- Agent's default persona rewritten: knows what OpenVent is (answers "what are you" without a tool call),
   instructed to always say something rather than go silent, and now greets the caller immediately on
   connect instead of waiting for them to speak first
 - Session state (`session-store.ts`) extended with per-call TTS/LLM provider overrides and a max-duration
@@ -291,7 +291,7 @@ All notable changes to Vent are documented here. Format loosely follows
 - Outgoing webhooks for n8n/Zapier/Make (`call.started`, `call.transcript`, `call.tool_call`,
   `call.completed`, `call.recording_ready`), plus a `POST /api/voice/webhooks/test` endpoint
 - In-app `/docs` documentation page covering architecture, env vars, API reference, and webhook payloads
-- Vent brand identity and storytelling landing page — paper/ink/ember palette, Fraunces/Inter Tight/
+- OpenVent brand identity and storytelling landing page — paper/ink/ember palette, Fraunces/Inter Tight/
   JetBrains Mono type system, scroll-driven pipeline animation (Twilio → Deepgram → LLM → TTS → caller)
 - Production deployment switched from Vite dev server to the real Bun server (`bun run start` via PM2) —
   required because the WebSocket media-stream bridge cannot run under Vite's dev SSR module runner

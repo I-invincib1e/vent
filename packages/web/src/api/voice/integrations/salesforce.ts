@@ -62,7 +62,7 @@ export async function syncToSalesforce(
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             WhoId: contactId,
-            Subject: "Vent voice agent call",
+            Subject: "OpenVent voice agent call",
             Description: notes,
             Status: "Completed",
           }),

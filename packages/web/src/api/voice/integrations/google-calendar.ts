@@ -41,7 +41,7 @@ export async function bookOnGoogleCalendar(
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             summary: `Call with ${callerName}`,
-            description: notes ?? "Booked via Vent voice agent.",
+            description: notes ?? "Booked via OpenVent voice agent.",
             start: { dateTime: start.toISOString() },
             end: { dateTime: end.toISOString() },
           }),

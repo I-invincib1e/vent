@@ -220,8 +220,8 @@ directly against Vent's own Drizzle/Turso schema, which meant they could only ev
 inside one app," not something another developer — on any telephony stack or orchestration framework —
 could adopt independently.
 
-**Decision:** Extract all five compliance modules into a new workspace package, `packages/vent-compliance`
-(published as `@vent/compliance`), with zero dependency on Twilio, Bun/Hono, or any specific database.
+**Decision:** Extract all five compliance modules into a new workspace package, `packages/openvent-compliance`
+(published as `@openvent/compliance`), with zero dependency on Twilio, Bun/Hono, or any specific database.
 Storage-backed modules (`dnc`, `gdpr`) now accept a small adapter interface (`DncStorageAdapter`,
 `CallLogStorageAdapter`) instead of importing Vent's `db` directly; in-memory reference adapters ship in
 the package for quick starts and tests. Vent's own app was then refactored to consume the extracted
@@ -274,7 +274,7 @@ redesign:
 packages, all passing); typecheck and build both clean. Regression-verified via curl: DNC add/list/remove,
 E.164 rejection on `/dnc` and `/calls/outbound`, DNC-blocked outbound call returns `403`, malformed JSON
 returns `400` not `500`, unsigned Twilio webhook rejected `403`, admin-key gate returns `401`
-without/with-wrong key and `200` with the correct key. npm publishing of `@vent/compliance` (ADR-010's
+without/with-wrong key and `200` with the correct key. npm publishing of `@openvent/compliance` (ADR-010's
 "remains a separate step") is still deferred — this round is about hardening the existing surface, not
 distribution.
 
@@ -395,7 +395,7 @@ product, not just what to build next — because "add more integrations" implies
 depending on whether this is a library, a framework, or a platform.
 
 Three shapes were considered:
-- **Pure library** (just `@vent/compliance` and friends on npm): low switching cost for adopters, but our
+- **Pure library** (just `@openvent/compliance` and friends on npm): low switching cost for adopters, but our
   own market research showed this doesn't monetize directly — GitHub Sponsors plus a hosted convenience
   layer is the standard pattern for OSS infra, not download counts alone. Also weak as something to pitch —
   "we maintain an npm package" isn't a fundable story.
@@ -481,7 +481,7 @@ the agent said." All of that data already existed (`calls`, `transcripts`, `doNo
 required manual reconstruction across multiple tables, which is exactly the wrong thing to be doing under
 the pressure of an actual regulatory inquiry.
 
-**Decision:** Add an audit-trail module to `@vent/compliance` (`audit-trail.ts`), following the package's
+**Decision:** Add an audit-trail module to `@openvent/compliance` (`audit-trail.ts`), following the package's
 existing storage-adapter pattern (`CallAuditStorageAdapter`, sibling to `DncStorageAdapter`/
 `CallLogStorageAdapter`) so it stays framework-agnostic and adoptable outside Vent's own app. It assembles,
 per call: direction, numbers, timing, status, disposition, current DNC status (checked at export time, not
@@ -500,7 +500,7 @@ routes: `GET /calls/:id/audit` and `GET /callers/:phoneNumber/audit`, both suppo
 Surfaced in the dashboard two ways: an "Export compliance audit" button on the call-detail page, and a new
 dedicated `/dashboard/audit` page for the per-number lookup case.
 
-**Consequences:** 10 new tests in `vent-compliance` (25 total in that package, 74 across both packages),
+**Consequences:** 10 new tests in `openvent-compliance` (25 total in that package, 74 across both packages),
 typecheck/build/lint all clean, and the two new endpoints were regression-tested live against real call
 data (401 without admin key, 404 for an unknown call id, 200 with an empty array for a number with no
 calls, correct oldest-first ordering for multi-call lookups, correct disclosure-confirmed/not-confirmed
@@ -532,7 +532,7 @@ purposes, forever, with source fully readable and verifiable — but not license
 competing hosted/managed commercial service without a separate commercial license from the licensor. No
 `.ee`-style file-level split was introduced in this round (that's a bigger structural change to defer until
 there's an actual premium-integration surface worth gating); the whole repo moved to the new license as one
-change. `README.md`'s license section and `packages/vent-compliance/package.json`'s license field were
+change. `README.md`'s license section and `packages/openvent-compliance/package.json`'s license field were
 updated to match.
 
 **Consequences:** Anyone already relying on Vent under the old MIT terms before this commit keeps those
@@ -543,5 +543,39 @@ it.
 
 ---
 
-*Next entry number: ADR-019. Add new entries above this line, keeping numbering sequential and dates
+## ADR-019 — Full rebrand from "Vent" to "OpenVent"
+**Date:** 2026-07-08
+
+**Context:** The exact domain `vent.com`/`.dev`/`.org`/`.app`/`.ai`/`.io`/`.co` was unavailable across every
+budget-reasonable TLD. `openvent.dev` was available at a flat, honest renewal price (no bait-and-switch
+TLD pricing), and — unlike a suffixed domain trick (e.g. `getvent.dev`) — "OpenVent" also does real
+positioning work: it puts the project's actual thesis (open-core, self-hosted, read-the-code-before-you-
+trust-it) directly in the name, not just the URL. The alternative considered was keeping the product name
+"Vent" and only using a prefixed domain — cheaper to execute, but it leaves the domain and the brand saying
+two different things forever.
+
+**Decision:** Full rename, not just a domain-layer relabel: product name, landing page copy, docs, README,
+LICENSE (now the "OpenVent Sustainable Use License"), the standalone compliance package (`@vent/compliance`
+→ `@openvent/compliance`, folder `packages/vent-compliance` → `packages/openvent-compliance`), and the
+admin-auth header (`X-Vent-Admin-Key` → `X-OpenVent-Admin-Key`, updated in both the frontend client and the
+backend middleware that reads it). Alongside the rename, added a full SEO/AEO layer that didn't exist
+before: `index.html`'s title was a literal placeholder (`"Web"`) with no meta description, no Open Graph
+tags, and the `og-image.png` was an unrelated leftover template asset — all replaced with real OpenVent-
+specific meta tags, a new branded OG image, `SoftwareApplication` + `FAQPage` JSON-LD, `robots.txt`,
+`sitemap.xml`, and `llms.txt` (a plain-text summary aimed at AI answer engines/crawlers). A visible FAQ
+section was added to the landing page itself so the `FAQPage` schema reflects real on-page content rather
+than being schema-only (search engines can penalize or ignore structured data that doesn't match visible
+page content).
+
+**Consequences:** Historical entries above this one in this file are left as originally written — they
+correctly record what the project was called and how the package was named at the time each decision was
+made. Only this entry and everything going forward uses "OpenVent." The GitHub repository itself was not
+renamed (still `github.com/I-invincib1e/vent`) — GitHub repo renames risk breaking the existing Vercel Git
+integration, and the badge/link in `README.md` already points at the correct fork; only the product's own
+name, package name, and public-facing copy changed. No functional code changes beyond the header rename
+(compliance/auth logic itself is untouched).
+
+---
+
+*Next entry number: ADR-020. Add new entries above this line, keeping numbering sequential and dates
 accurate to when the decision was actually made.*

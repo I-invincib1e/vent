@@ -1,6 +1,6 @@
-# Contributing to Vent
+# Contributing to OpenVent
 
-Thanks for looking at this. Vent is early — the codebase is small enough to read end to end in an
+Thanks for looking at this. OpenVent is early — the codebase is small enough to read end to end in an
 afternoon, and that's intentional. This doc is about making that afternoon easier.
 
 ## Before you start
@@ -17,7 +17,7 @@ afternoon, and that's intentional. This doc is about making that afternoon easie
 
 Monorepo, Bun workspaces + Turborepo. The voice pipeline itself lives in
 `packages/web/src/api/voice/` — see `docs/architecture.md` for the full layout. Compliance logic is a
-separate, standalone package (`packages/vent-compliance`) with no dependency on the rest of the app —
+separate, standalone package (`packages/openvent-compliance`) with no dependency on the rest of the app —
 if you're changing DNC/calling-window/HIPAA/GDPR logic, it belongs there, not in `packages/web`.
 
 ## Development setup
@@ -42,12 +42,12 @@ Two things that trip people up:
 - **Small, focused PRs.** One logical change per PR — easier to review, easier to revert if something's
   wrong.
 - **Tests for anything with real logic.** Pure functions (parsers, validators, prompt builders) get unit
-  tests — see `packages/web/src/api/voice/agent.test.ts` or `packages/vent-compliance/src/*.test.ts` for the
+  tests — see `packages/web/src/api/voice/agent.test.ts` or `packages/openvent-compliance/src/*.test.ts` for the
   existing style (`bun:test`, no mocking framework, test the actual function directly). Run the full suite
   before opening a PR:
   ```bash
   cd packages/web && bun test src/api/voice/
-  cd packages/vent-compliance && bun test
+  cd packages/openvent-compliance && bun test
   ```
 - **Typecheck and build before you push:**
   ```bash
@@ -74,7 +74,7 @@ Two things that trip people up:
 ## Reporting bugs / proposing features
 
 Open an issue. For anything that isn't a trivial fix, a short discussion before a PR saves everyone time —
-especially for anything touching compliance logic (`packages/vent-compliance`), where correctness matters
+especially for anything touching compliance logic (`packages/openvent-compliance`), where correctness matters
 more than usual.
 
 ## Questions

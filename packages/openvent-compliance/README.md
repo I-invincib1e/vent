@@ -1,9 +1,9 @@
-# @vent/compliance
+# @openvent/compliance
 
 Framework-agnostic compliance primitives for voice agents — automatic TCPA calling-window checks,
 Do-Not-Call enforcement, recording/AI consent disclosure, a HIPAA boot-time guardrail, and GDPR
-retention/erasure. Extracted from [Vent](https://github.com/rishipawar8999-tech/vent), a self-hosted voice
-agent pipeline, so the compliance layer can be adopted independently — in a Vent-style Twilio pipeline, a
+retention/erasure. Extracted from [OpenVent](https://github.com/I-invincib1e/vent), a self-hosted voice
+agent pipeline, so the compliance layer can be adopted independently — in an OpenVent-style Twilio pipeline, a
 Pipecat pipeline, a LiveKit Agents pipeline, or anything else that places phone calls.
 
 **No Twilio, no Bun, no specific database required.** Bring your own storage by implementing two small
@@ -21,8 +21,8 @@ layer, designed to sit in front of *any* telephony/voice pipeline.
 ## Install
 
 ```bash
-bun add @vent/compliance
-# or: npm install @vent/compliance
+bun add @openvent/compliance
+# or: npm install @openvent/compliance
 ```
 
 ## Quickstart
@@ -32,7 +32,7 @@ import {
   checkOutboundCallCompliance,
   createMemoryDncAdapter,
   withDisclosure,
-} from "@vent/compliance";
+} from "@openvent/compliance";
 
 const dnc = createMemoryDncAdapter(); // swap for a real adapter in production — see below
 
@@ -87,7 +87,7 @@ production, implement these against whatever you already use. Example against Dr
 import { db } from "./db";
 import { doNotCall } from "./schema";
 import { eq } from "drizzle-orm";
-import type { DncStorageAdapter } from "@vent/compliance";
+import type { DncStorageAdapter } from "@openvent/compliance";
 
 export const drizzleDncAdapter: DncStorageAdapter = {
   async isListed(phoneNumber) {
@@ -109,7 +109,7 @@ export const drizzleDncAdapter: DncStorageAdapter = {
 ## HIPAA mode
 
 ```ts
-import { assertHipaaPreflight } from "@vent/compliance";
+import { assertHipaaPreflight } from "@openvent/compliance";
 
 // Call once at process boot.
 assertHipaaPreflight({ enabled: true, baaConfirmed: true });
@@ -126,7 +126,7 @@ module only ensures nobody silently skipped that step.
 ## GDPR retention + erasure
 
 ```ts
-import { startRetentionSweep, eraseCallerData } from "@vent/compliance";
+import { startRetentionSweep, eraseCallerData } from "@openvent/compliance";
 import { myCallLogAdapter } from "./my-adapter";
 
 // Runs once at boot, then daily — deletes call data older than DATA_RETENTION_DAYS (default 90).

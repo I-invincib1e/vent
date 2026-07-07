@@ -22,5 +22,5 @@ export function clearAdminKey() {
 
 export function adminHeaders(): Record<string, string> {
   const key = getAdminKey();
-  return key ? { "X-Vent-Admin-Key": key } : {};
+  return key ? { "X-OpenVent-Admin-Key": key } : {};
 }

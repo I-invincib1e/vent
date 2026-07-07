@@ -26,7 +26,7 @@ export function Pipeline() {
           One voice, four hops, real time.
         </h2>
         <p className="mt-6 text-paper/70 leading-relaxed max-w-2xl">
-          Scroll — watch a single voice packet travel the exact path every call takes through Vent's
+          Scroll — watch a single voice packet travel the exact path every call takes through OpenVent's
           pipeline, hop by hop, live.
         </p>
 
@@ -78,7 +78,7 @@ export function Pipeline() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mt-16 font-mono text-xs text-paper/50 max-w-lg"
         >
-          If the caller talks over the agent mid-reply, Vent clears the in-flight response instantly —
+          If the caller talks over the agent mid-reply, OpenVent clears the in-flight response instantly —
           no waiting for a robotic monologue to finish.
         </motion.p>
       </div>

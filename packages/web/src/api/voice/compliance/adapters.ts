@@ -1,13 +1,13 @@
-import type { CallAuditStorageAdapter, CallLogStorageAdapter, DncStorageAdapter } from "@vent/compliance";
+import type { CallAuditStorageAdapter, CallLogStorageAdapter, DncStorageAdapter } from "@openvent/compliance";
 import { db } from "../../database";
 import { calls, doNotCall, transcripts, toolCalls } from "../../database/schema";
 import { eq, lt, or, asc } from "drizzle-orm";
 
 /**
- * Drizzle/Turso storage adapters wiring Vent's own schema into the
- * standalone @vent/compliance package (packages/vent-compliance). This is
+ * Drizzle/Turso storage adapters wiring OpenVent's own schema into the
+ * standalone @openvent/compliance package (packages/openvent-compliance). This is
  * the "dogfooding" proof that the extraction actually works standalone —
- * Vent's own compliance enforcement now runs entirely through the published
+ * OpenVent's own compliance enforcement now runs entirely through the published
  * package's functions, with these two adapters as the only app-specific
  * glue code required.
  */
@@ -57,9 +57,9 @@ export const callLogAdapter: CallLogStorageAdapter = {
 };
 
 /**
- * Backs the compliance audit-trail feature (see @vent/compliance's
+ * Backs the compliance audit-trail feature (see @openvent/compliance's
  * audit-trail.ts) — assembles the "who was called, when, what was said"
- * record a compliance request actually needs, from Vent's own
+ * record a compliance request actually needs, from OpenVent's own
  * calls/transcripts tables. See routes.ts's GET /calls/:id/audit and
  * GET /callers/:phoneNumber/audit for where this gets used.
  */

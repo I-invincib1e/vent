@@ -32,7 +32,7 @@ export function Hero() {
         transition={{ duration: 0.7, delay: 0.1 }}
         className="text-6xl sm:text-8xl font-semibold tracking-tight text-center"
       >
-        Vent
+        OpenVent
       </motion.h1>
 
       <motion.p
@@ -42,7 +42,7 @@ export function Hero() {
         className="mt-6 text-lg sm:text-xl text-ink-soft text-center max-w-xl leading-relaxed"
       >
         Every black-box voice AI platform is a rented voice. <br className="hidden sm:block" />
-        Vent is the vent it escapes through — your pipeline, your keys, your rules.
+        OpenVent is the vent it escapes through — your pipeline, your keys, your rules.
       </motion.p>
 
       <motion.div

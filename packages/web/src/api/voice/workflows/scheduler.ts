@@ -3,7 +3,7 @@ import { db } from "../../database";
 import { scheduledCalls } from "../../database/schema";
 import { twilioClient, getPublicUrl } from "../twilio-client";
 import { sessionStore } from "../session-store";
-import { isOnDoNotCallList, checkCallingWindow } from "@vent/compliance";
+import { isOnDoNotCallList, checkCallingWindow } from "@openvent/compliance";
 import { dncAdapter } from "../compliance/adapters";
 
 const SWEEP_INTERVAL_MS = 60 * 1000; // check every minute

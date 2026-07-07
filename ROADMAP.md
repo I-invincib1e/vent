@@ -6,7 +6,7 @@ aspirational. See [`DECISIONS.md`](./DECISIONS.md) for the reasoning behind any 
 
 ## Where this is headed
 
-Vent is an **open-core framework**, not a pure library or a pure hosted platform (see ADR-015). The
+OpenVent is an **open-core framework**, not a pure library or a pure hosted platform (see ADR-015). The
 self-hosted orchestration layer — call logic, the state engine, the compliance primitives, the dashboard —
 stays free and fully open, forever (AI providers and telephony remain cloud APIs by necessity — see ADR-016
 for why "self-hosted" means orchestration, not the whole stack). That's the trust mechanism for anyone who
@@ -27,7 +27,7 @@ synthesis and reasoning behind the reprioritization below.
 - [x] Barge-in, call recording, turn-by-turn transcripts
 - [x] Outgoing webhooks (n8n/Zapier/Make compatible)
 - [x] Swappable providers behind an abstraction layer (no code changes to switch)
-- [x] Compliance layer extracted to a standalone package (`@vent/compliance`) — DNC, TCPA calling window,
+- [x] Compliance layer extracted to a standalone package (`@openvent/compliance`) — DNC, TCPA calling window,
       recording/AI disclosure, HIPAA boot guardrail, GDPR retention + erasure
 - [x] Call workflows — outcome-based automation with a background retry scheduler
 - [x] Per-number configuration (persona, provider, call limits per Twilio number)
@@ -70,7 +70,7 @@ synthesis and reasoning behind the reprioritization below.
 
 ## Compliance audit-trail export ✅ shipped
 
-- [x] **Compliance audit-trail export** — `@vent/compliance`'s `audit-trail.ts`: assembles, per call or per
+- [x] **Compliance audit-trail export** — `@openvent/compliance`'s `audit-trail.ts`: assembles, per call or per
       phone number, exactly who was called, when, under what disposition, current DNC status, whether the
       recording/AI disclosure was actually spoken (not just configured), and the full transcript. Exportable
       as plain text (hand-to-a-lawyer ready) or JSON. New endpoints (`GET /calls/:id/audit`,
@@ -92,7 +92,7 @@ feedback — see `docs/strategy-2026-07.md` for the full synthesis)_
 - [ ] **Cross-call memory** (lower priority) — a per-phone-number rolling summary/history, complementing
       (not replacing) the structured `capturedState` engine. Distinct from Voximplant's `ApplicationStorage`
       pattern in mechanism (ours should stay closer to structured facts, not raw chat-history replay) but
-      solves the same "remembers me from last time" use case, which Vent doesn't have at all today.
+      solves the same "remembers me from last time" use case, which OpenVent doesn't have at all today.
 
 ## Not started — researching first
 
@@ -103,9 +103,9 @@ feedback — see `docs/strategy-2026-07.md` for the full synthesis)_
       trail feature above to ship before writing final launch copy, since it'll likely be the headline demo.
 - [ ] **Real national DNC registry sync** — blocked on a paid FTC Subscription Account Number (SAN), a
       recurring cost not currently budgeted. Under the open-core model (ADR-015), this is a candidate for a
-      paid, hosted add-on later (Vent holds one SAN, amortized across customers) rather than something every
+      paid, hosted add-on later (OpenVent holds one SAN, amortized across customers) rather than something every
       self-hoster needs to pay for individually.
-- [ ] **npm publish `@vent/compliance`** — still deferred until v1 positioning fully settles. The audit-
+- [ ] **npm publish `@openvent/compliance`** — still deferred until v1 positioning fully settles. The audit-
       trail feature (now shipped) makes this package a more complete story than it was, but the decision to
       wait was about launch timing/positioning, not feature completeness — no change to when this happens.
 
@@ -114,7 +114,7 @@ feedback — see `docs/strategy-2026-07.md` for the full synthesis)_
 These are directional, not committed, and will change based on what actually comes back from the
 community-feedback round above:
 
-- [ ] Managed hosting tier ("Vent Cloud") — for people who want the pipeline without running their own
+- [ ] Managed hosting tier ("OpenVent Cloud") — for people who want the pipeline without running their own
       tunnel/PM2/Twilio wiring
 - [ ] Multi-tenant auth for the dashboard (currently single shared admin key — fine for one operator, not a
       team/multi-customer setup)

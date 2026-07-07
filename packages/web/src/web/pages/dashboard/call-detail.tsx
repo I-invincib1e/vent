@@ -8,7 +8,7 @@ import { adminHeaders } from "../../lib/admin-key";
 /**
  * Downloads the compliance audit trail for this call as a plain-text file —
  * who was called, when, disclosure/consent status, disposition, DNC status,
- * and the full transcript, assembled server-side (see @vent/compliance's
+ * and the full transcript, assembled server-side (see @openvent/compliance's
  * audit-trail.ts). This is the direct answer to real user feedback that the
  * thing that actually kills the compliance fear is being able to produce
  * this on demand, not another warning.

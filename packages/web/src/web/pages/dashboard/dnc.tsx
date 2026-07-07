@@ -57,7 +57,7 @@ export function DncPage() {
           Do Not Call list
         </h1>
         <p className="text-sm text-ink-soft mt-1 max-w-xl">
-          Checked automatically before every outbound call via <code className="font-mono text-xs">@vent/compliance</code>.
+          Checked automatically before every outbound call via <code className="font-mono text-xs">@openvent/compliance</code>.
           Numbers land here manually (below) or automatically when the agent records a "not-interested" disposition.
         </p>
       </div>

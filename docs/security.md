@@ -1,11 +1,11 @@
 # Security
 
 - **Ops endpoints require an admin key.** `GET/POST /calls`, `/dnc`, `/callers`, `/webhooks/test` all check
-  the `X-Vent-Admin-Key` header against `ADMIN_API_KEY`. If `ADMIN_API_KEY` is unset, these endpoints run
+  the `X-OpenVent-Admin-Key` header against `ADMIN_API_KEY`. If `ADMIN_API_KEY` is unset, these endpoints run
   unauthenticated with a loud startup warning — fine for local testing, **not fine for anything public**.
   Set `ADMIN_API_KEY` and send it as a header on every ops request:
   ```bash
-  curl -H "X-Vent-Admin-Key: $ADMIN_API_KEY" {PUBLIC_APP_URL}/api/voice/calls
+  curl -H "X-OpenVent-Admin-Key: $ADMIN_API_KEY" {PUBLIC_APP_URL}/api/voice/calls
   ```
 - **Twilio webhooks are signature-verified.** `/incoming`, `/status-callback`, and `/recording-status`
   validate the `X-Twilio-Signature` header against `TWILIO_AUTH_TOKEN` using Twilio's official signing
@@ -20,7 +20,7 @@
   Failures are caught and logged per-recipient; they don't crash the workflow run.
 - **Retry attempts are actually capped now.** Each workflow action can define `maxRetries`; the scheduler
   tracks `previousAttempt` and refuses to schedule another retry once `nextAttempt > maxRetries`.
-- **National DNC registry: adapter only, not a live sync.** `packages/vent-compliance/src/national-dnc.ts`
+- **National DNC registry: adapter only, not a live sync.** `packages/openvent-compliance/src/national-dnc.ts`
   defines `syncNationalDncRegistry` and a `NationalRegistryFetcher` interface so a real registry (e.g. the
   US National DNC Registry, which requires a SAN — Subscription Account Number — to query) can be plugged
   in later. It currently ships with `noopNationalRegistryFetcher`, i.e. it's a documented stub, not a
