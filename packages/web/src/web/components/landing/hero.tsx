@@ -17,10 +17,19 @@ export function Hero() {
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      <motion.p
+      <motion.img
+        src="/logo-mark.png"
+        alt="OpenVent"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
+        className="size-14 sm:size-16 mb-6"
+      />
+
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.05 }}
         className="font-mono text-xs tracking-[0.25em] uppercase text-ember mb-6"
       >
         Voice Agent Infrastructure

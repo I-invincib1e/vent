@@ -19,6 +19,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-1.5 text-ink-soft hover:text-ink transition-colors text-sm">
               <ArrowLeft className="size-3.5" />
+              <img src="/logo-mark.png" alt="" className="size-4" />
               OpenVent
             </Link>
             <nav className="flex items-center gap-1">
