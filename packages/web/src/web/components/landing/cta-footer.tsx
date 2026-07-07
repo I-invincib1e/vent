@@ -1,21 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Link } from "wouter";
 import { BookOpen } from "lucide-react";
-import { api } from "../../lib/api";
-import { useDesktop } from "../../hooks/use-desktop";
 
 export function CtaFooter() {
-  const health = useQuery({
-    queryKey: ["health"],
-    queryFn: async () => {
-      const res = await api.health.$get();
-      return res.json();
-    },
-  });
-  const desktop = useDesktop();
-  const isOk = health.data?.status === "ok";
-
   return (
     <footer className="bg-ink text-paper py-24 sm:py-32">
       <div className="max-w-3xl mx-auto px-6 text-center">
@@ -54,20 +41,11 @@ export function CtaFooter() {
           </Link>
         </motion.div>
 
-        <div className="mt-16 flex items-center justify-center gap-2 font-mono text-xs text-paper/50">
-          <span
-            className={`inline-block size-1.5 rounded-full ${isOk ? "bg-signal" : "bg-ember"} ${
-              health.isLoading ? "animate-pulse" : ""
-            }`}
-          />
-          {health.isLoading ? "Checking pipeline status…" : isOk ? "Pipeline live" : "Pipeline unreachable"}
-          {" · "}
-          {desktop ? `Desktop (${desktop.platform})` : "Web"}
-        </div>
-        <p className="mt-4 font-mono text-xs text-paper/40">
+        <p className="mt-16 font-mono text-xs text-paper/40">
           Fair-code, free to self-host forever — Vent Sustainable Use License
         </p>
       </div>
     </footer>
   );
 }
+
