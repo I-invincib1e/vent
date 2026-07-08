@@ -89,8 +89,9 @@ commit + ADR entry, non-breaking on its own:
 - [x] **Cross-call memory** ✅ shipped — `callerMemory` table, flat key/value overlay merged (not
       replaced) per phone number, injected into the system prompt as prior-call context distinct from
       this-call `capturedState`. See ADR-023.
-- [ ] **Multi-user dashboard auth** — labeled API keys (create/list/revoke, with a label + last-used
-      timestamp), not full accounts. The existing `ADMIN_API_KEY` env var keeps working unchanged.
+- [x] **Multi-user dashboard auth** ✅ shipped — labeled API keys (create/list/revoke, with a label +
+      last-used timestamp), not full accounts. `ADMIN_API_KEY` env var keeps working unchanged. New
+      `/dashboard/settings` page. See ADR-025.
 - [ ] **Redis-backed session storage** — optional, opt-in via `REDIS_URL`. Default stays in-memory
       (today's exact behavior) for anyone who doesn't set it; only needed to run more than one instance.
 

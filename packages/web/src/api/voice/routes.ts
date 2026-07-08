@@ -41,6 +41,7 @@ import { requireAdminKey } from "./middleware/admin-auth";
 import { requireTwilioSignature } from "./middleware/twilio-signature";
 import { rateLimitOutboundCalls } from "./middleware/rate-limit";
 import { isValidE164 } from "./validation";
+import { createAdminKey, listAdminKeys, revokeAdminKey } from "./admin-keys";
 
 export const voice = new Hono()
   // Twilio webhook — set this as the phone number's "A call comes in" Voice URL.
@@ -340,4 +341,28 @@ export const voice = new Hono()
     const phoneNumber = decodeURIComponent(c.req.param("phoneNumber"));
     const result = await eraseCallerData(callLogAdapter, phoneNumber);
     return c.json({ erased: true, ...result }, 200);
+  })
+
+  // Multi-user dashboard auth (ADR-025) — labeled API keys. Gated by
+  // requireAdminKey itself: you need an existing valid key (the bootstrap
+  // ADMIN_API_KEY, or another labeled key) to create more. The plaintext key
+  // is returned exactly once, on creation — never again after this response.
+  .post("/admin-keys", requireAdminKey, async (c) => {
+    const parsed = await c.req.json().catch(() => null);
+    const label = parsed && typeof parsed === "object" ? (parsed as { label?: string }).label : undefined;
+    if (!label || !label.trim()) return c.json({ error: "`label` is required" }, 400);
+    const created = await createAdminKey(label.trim());
+    return c.json({ adminKey: created }, 201);
+  })
+
+  .get("/admin-keys", requireAdminKey, async (c) => {
+    const keys = await listAdminKeys();
+    return c.json({ adminKeys: keys }, 200);
+  })
+
+  .delete("/admin-keys/:id", requireAdminKey, async (c) => {
+    const id = Number(c.req.param("id"));
+    if (!Number.isFinite(id)) return c.json({ error: "invalid id" }, 400);
+    await revokeAdminKey(id);
+    return c.json({ revoked: true }, 200);
   });

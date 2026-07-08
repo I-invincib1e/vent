@@ -66,6 +66,26 @@ export const callerMemory = sqliteTable("caller_memory", {
     .$defaultFn(() => new Date()),
 });
 
+/**
+ * Multi-user dashboard auth (ADR-025) — labeled API keys, not real accounts.
+ * The legacy single `ADMIN_API_KEY` env var keeps working unchanged and
+ * forever (it's the bootstrap key); this table is an additive way to hand
+ * out additional, individually revocable keys (e.g. "Jane's laptop", "n8n
+ * webhook") without rotating the one shared secret for everyone. Only the
+ * hash is ever stored — the plaintext key is shown exactly once, at
+ * creation, and is not retrievable again.
+ */
+export const adminKeys = sqliteTable("admin_keys", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  label: text("label").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }),
+});
+
 export const transcripts = sqliteTable("transcripts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   callId: integer("call_id")
