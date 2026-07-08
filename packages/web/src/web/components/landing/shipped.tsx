@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
-import { ShieldCheck, Plug, GitBranch, FileClock } from "lucide-react";
+import { ShieldCheck, Plug, GitBranch, FileClock, Gauge, KeyRound } from "lucide-react";
 import { SectionLabel } from "./section-label";
 
 const shipped = [
@@ -27,6 +27,18 @@ const shipped = [
     title: "Workflows + per-number config",
     story:
       "JSON-defined outcome-based automation with a background retry scheduler, plus per-Twilio-number persona/provider/call-limit overrides — no redeploy to change how one number behaves.",
+  },
+  {
+    icon: Gauge,
+    title: "Latency you can actually see",
+    story:
+      "Per-call breakdown of STT connect, LLM time-to-first-token, and TTS first byte, right on the dashboard — plus a merged per-phone-number memory so an agent remembers a caller across calls, not just within one.",
+  },
+  {
+    icon: KeyRound,
+    title: "Built for more than one operator",
+    story:
+      "Labeled admin API keys — create, list, revoke — instead of one shared secret everyone copies around. Optional Redis-backed session storage so you can run more than one instance without losing call state.",
   },
 ];
 

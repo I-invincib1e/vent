@@ -122,11 +122,11 @@ community-feedback round above:
 
 - [ ] Managed hosting tier ("OpenVent Cloud") — for people who want the pipeline without running their own
       tunnel/PM2/Twilio wiring
-- [ ] Multi-tenant auth for the dashboard (currently single shared admin key — fine for one operator, not a
-      team/multi-customer setup)
 - [ ] Per-persona required-field schemas for the state engine (e.g. "must capture email before ending this
       call") — currently the model decides what's worth capturing, best-effort
-- [ ] Redis/DB-backed session storage for horizontal scaling (currently in-memory per call, single-instance)
+- [ ] Full multi-tenant accounts (orgs/teams/roles) — labeled admin keys (shipped, see ADR-025) cover
+      multiple operators sharing one deployment; this would be a further step toward isolated
+      customer-per-tenant hosting
 
 ## How this roadmap gets updated
 

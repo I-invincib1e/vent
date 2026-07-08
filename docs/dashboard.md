@@ -1,13 +1,21 @@
 # Dashboard
 
-A small operator dashboard ships at `/dashboard`, gated behind your `ADMIN_API_KEY` (entered once per
-browser session, never sent anywhere but your own server):
+A small operator dashboard ships at `/dashboard`, gated behind an admin key (entered once per browser
+session, never sent anywhere but your own server) — either your `ADMIN_API_KEY` env var, or a labeled key
+created from the Keys page (see below):
 
 - **Calls** — live/completed calls, auto-refreshing, with a quick indicator of how many facts were
   captured per call
-- **Call detail** — full transcript, tool-call log, recording link, and the captured-state panel (see
-  [State engine](./state-engine.md))
+- **Call detail** — full transcript, tool-call log, recording link, the captured-state panel (see
+  [State engine](./state-engine.md)), and a **latency breakdown** panel (STT connect, LLM
+  time-to-first-token, TTS first byte — "not recorded" for fields that weren't captured, not a false
+  `0ms`)
 - **Do Not Call** — add/remove DNC entries without touching curl
+- **Audit** — pull the compliance audit trail (who was called, when, under what consent, what was said)
+  per call or per phone number, exportable as plain text or JSON
+- **Keys** (`/dashboard/settings`) — generate labeled admin keys (shown once, copy button), see
+  created/last-used timestamps, revoke individually — without rotating `ADMIN_API_KEY` for everyone
 
-This is meant for you, the operator, not end users — there's no multi-tenant login, just the same admin
-key that already gates the ops API.
+This is meant for you, the operator, not end users. It's not a full multi-tenant product login system,
+but it's no longer just one shared secret either — see [`DECISIONS.md`](../DECISIONS.md) ADR-025 for the
+labeled-key auth model.

@@ -9,14 +9,16 @@ const done = [
   "Compliance audit-trail export (lawyer-ready text or JSON)",
   "CRM + calendar integrations behind a resilient timeout/retry/circuit-breaker wrapper",
   "Per-number config, call workflows, operator dashboard, CI + 74 tests",
+  "Per-call latency breakdown — STT connect, LLM time-to-first-token, TTS first byte, on the dashboard",
+  "Cross-call memory — a merged per-phone-number fact overlay, alongside structured captured state",
+  "Multi-user dashboard auth — labeled API keys, create/list/revoke, not a single shared secret",
+  "Redis-backed session storage — optional, opt-in, for running more than one instance",
 ];
 
 const next = [
-  "Per-call latency breakdown — STT connect, LLM time-to-first-token, TTS first byte, on the dashboard",
-  "Cross-call memory — a rolling per-phone-number history, alongside structured captured state",
-  "Multi-user dashboard auth — today it's a single shared admin key, fine solo, not fine for a team",
   "Hosted national DNC registry sync — needs a paid FTC SAN, planned as part of a future paid tier",
-  "Redis/DB-backed session state — to run more than one instance",
+  "Telephony provider abstraction — Twilio isn't the only option, deliberately deferred with the coupling points already scoped",
+  "npm publish of @openvent/compliance — still deferred until v1 positioning fully settles",
 ];
 
 function DoneItem({

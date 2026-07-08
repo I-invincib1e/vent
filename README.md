@@ -4,8 +4,7 @@
 
 [![CI](https://github.com/I-invincib1e/vent/actions/workflows/ci.yml/badge.svg)](https://github.com/I-invincib1e/vent/actions/workflows/ci.yml)
 
-🔗 **Live:** [voiceag-1mf8gfp-preview-4200.runable.site](https://voiceag-1mf8gfp-preview-4200.runable.site/)
-— includes the landing page, in-app docs (`/docs`), and a demo tour of the operator dashboard.
+🔗 **Live:** [openvent.dev](https://openvent.dev/) — the landing page and in-app docs (`/docs`).
 
 OpenVent is **self-hosted orchestration, bring-your-own AI providers** — not a black-box voice AI platform,
 and not a claim that everything down to the phone network runs on your own hardware (nobody self-hosts a
@@ -95,14 +94,15 @@ Full setup, every environment variable, and how to point Twilio at your app:
 
 - The live call audio path (WebSocket bridge) only works under the production Bun server
   (`bun run start`), not Vite's dev server.
-- Session state (persona, provider overrides, captured facts) is stored in-memory per call and persisted
-  to SQLite — fine for a single instance, swap for Redis/DB-backed session storage to scale horizontally.
+- Session state (persona, provider overrides, captured facts) is in-memory per call by default —
+  fine for a single instance. Set `REDIS_URL` to switch to Redis-backed session storage if you run more
+  than one instance; see [`docs/configuration.md`](./docs/configuration.md).
 - National DNC Registry sync ships as an adapter shape only — the real US registry requires a paid
   Subscription Account Number (SAN); only your own internal DNC list is enforced automatically today.
 - `captureField` has no per-persona required-slot schema — the model decides what's worth capturing based
   on the tool description, not a strict checklist.
-- The dashboard's admin-key gate is a single shared key, not per-user auth — fine for a solo operator, not
-  a multi-tenant login system.
+- The dashboard supports labeled admin keys (create/list/revoke from `/dashboard/settings`), not full
+  username/password accounts — fine for a small operator team, not a multi-tenant product login system.
 
 See [`ROADMAP.md`](./ROADMAP.md) for what's actively being worked on to close these gaps.
 

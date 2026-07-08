@@ -19,3 +19,22 @@ OpenVent keeps a separate, deterministic state layer instead:
 See [`DECISIONS.md`](../DECISIONS.md) ADR-012 for the full reasoning, including what's deliberately not
 built yet (no per-persona required-slot schema — the model decides what's worth capturing based on the
 tool description alone, not a strict checklist).
+
+## Cross-call memory
+
+`capturedState` above is scoped to a single call — on its own, a returning caller starts from zero every
+time. `callerMemory` is a separate table, one row per phone number, that persists across calls:
+
+- On `finalizeCall`, that call's `capturedState` is merged into the existing `callerMemory` row for the
+  same number (`{ ...existing, ...newFacts }`) — later calls overwrite matching keys, new keys accumulate.
+  It's a flat key/value overlay, not a call-by-call transcript log and not an LLM-generated summary, so
+  there's no extra inference cost and no unbounded growth.
+- Which number counts as "the human" depends on call direction: `fromNumber` on an inbound call, but
+  `toNumber` on an outbound call (the operator's own Twilio number is `fromNumber` there).
+- It's injected into the system prompt via a separate "from a previous call... may be outdated" block,
+  distinct from this-call's known-facts block, since the model should treat the two with different
+  confidence.
+
+See [`DECISIONS.md`](../DECISIONS.md) ADR-023 for the full reasoning and what's explicitly out of scope
+(no unit tests against a real DB for the read/write helpers — consistent with the rest of this layer,
+verified integration-style instead).
