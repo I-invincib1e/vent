@@ -1,4 +1,5 @@
-import { motion } from "motion/react";
+import { useRef } from "react";
+import { motion, useScroll, useTransform, useSpring } from "motion/react";
 import { SectionLabel } from "./section-label";
 
 const rows: [string, string, string][] = [
@@ -8,9 +9,39 @@ const rows: [string, string, string][] = [
   ["Where the transcripts go", "Their analytics, maybe exportable", "Your database, from turn one"],
 ];
 
-export function Problem() {
+function ProblemRow({
+  row,
+  index,
+  total,
+  progress,
+}: {
+  row: [string, string, string];
+  index: number;
+  total: number;
+  progress: ReturnType<typeof useSpring>;
+}) {
+  const start = index / total;
+  const end = start + 1 / total;
+  const opacity = useTransform(progress, [start, end], [0.15, 1]);
+  const x = useTransform(progress, [start, end], [-16, 0]);
+  const [label, black, vent] = row;
+
   return (
-    <section className="max-w-3xl mx-auto px-6 py-24 sm:py-32">
+    <motion.div style={{ opacity, x }} className="grid grid-cols-3 text-sm">
+      <div className="p-4 font-medium">{label}</div>
+      <div className="p-4 text-ink-soft">{black}</div>
+      <div className="p-4 text-ink font-medium">{vent}</div>
+    </motion.div>
+  );
+}
+
+export function Problem() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.75", "end 0.5"] });
+  const progress = useSpring(scrollYProgress, { stiffness: 100, damping: 26, mass: 0.5 });
+
+  return (
+    <section ref={ref} className="max-w-3xl mx-auto px-6 py-24 sm:py-32">
       <SectionLabel index="01" label="The Problem" />
       <motion.h2
         initial={{ opacity: 0, y: 16 }}
@@ -39,19 +70,8 @@ export function Problem() {
           <div className="p-4">Black-box platform</div>
           <div className="p-4 text-signal">OpenVent</div>
         </div>
-        {rows.map(([label, black, vent], i) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0, x: -12 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, amount: 0.6 }}
-            transition={{ duration: 0.5, delay: i * 0.08 }}
-            className="grid grid-cols-3 text-sm"
-          >
-            <div className="p-4 font-medium">{label}</div>
-            <div className="p-4 text-ink-soft">{black}</div>
-            <div className="p-4 text-ink font-medium">{vent}</div>
-          </motion.div>
+        {rows.map((row, i) => (
+          <ProblemRow key={row[0]} row={row} index={i} total={rows.length} progress={progress} />
         ))}
       </div>
     </section>

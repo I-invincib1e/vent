@@ -1,9 +1,8 @@
 import { Hero } from "../components/landing/hero";
 import { Problem } from "../components/landing/problem";
-import { Pipeline } from "../components/landing/pipeline";
+import { Architecture } from "../components/landing/architecture";
 import { Features } from "../components/landing/features";
 import { CodePreview } from "../components/landing/code-preview";
-import { ProductTour } from "../components/landing/product-tour";
 import { Shipped } from "../components/landing/shipped";
 import { Roadmap } from "../components/landing/roadmap";
 import { Faq } from "../components/landing/faq";
@@ -16,10 +15,9 @@ function Index() {
       <Hero />
       <Stack />
       <Problem />
-      <Pipeline />
+      <Architecture />
       <Features />
       <CodePreview />
-      <ProductTour />
       <Shipped />
       <Roadmap />
       <Faq />

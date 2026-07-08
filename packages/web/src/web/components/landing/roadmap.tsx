@@ -1,4 +1,5 @@
-import { motion } from "motion/react";
+import { useRef } from "react";
+import { motion, useScroll, useTransform, useSpring } from "motion/react";
 import { Check, Circle, CircleDot } from "lucide-react";
 import { SectionLabel } from "./section-label";
 
@@ -18,35 +19,56 @@ const next = [
   "Redis/DB-backed session state — to run more than one instance",
 ];
 
+function DoneItem({
+  item,
+  index,
+  total,
+  progress,
+}: {
+  item: string;
+  index: number;
+  total: number;
+  progress: ReturnType<typeof useSpring>;
+}) {
+  const start = index / total;
+  const end = start + 1 / total;
+  const checkScale = useTransform(progress, [start, end], [0.4, 1]);
+  const opacity = useTransform(progress, [start, end], [0.25, 1]);
+
+  return (
+    <motion.li style={{ opacity }} className="flex items-start gap-3 text-sm text-ink-soft leading-relaxed">
+      <motion.span style={{ scale: checkScale }} className="mt-0.5 shrink-0">
+        <Check className="size-4 text-signal" />
+      </motion.span>
+      {item}
+    </motion.li>
+  );
+}
+
 export function Roadmap() {
+  const doneRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress: doneProgress } = useScroll({ target: doneRef, offset: ["start 0.8", "end 0.6"] });
+  const doneSpring = useSpring(doneProgress, { stiffness: 100, damping: 26, mass: 0.5 });
+
   return (
     <section className="max-w-4xl mx-auto px-6 py-24 sm:py-32">
-      <SectionLabel index="07" label="Where This Actually Stands" />
+      <SectionLabel index="06" label="Where This Actually Stands" />
       <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-2xl">
         We're not betting this beats Vapi or Retell today. It doesn't.
       </h2>
       <p className="mt-6 text-ink-soft leading-relaxed max-w-2xl">
-        They're funded, further along, and battle-tested at a scale OpenVent hasn't seen yet. What OpenVent bets on
-        is different: you get to read every line before you trust it, and it gets better in the open, in
-        public, with real feedback — not behind a roadmap you don't get a vote on.
+        They're funded, further along, and battle-tested at a scale OpenVent hasn't seen yet. What
+        OpenVent bets on is different: you get to read every line before you trust it, and it gets
+        better in the open, in public, with real feedback — not behind a roadmap you don't get a vote
+        on.
       </p>
 
-      <div className="mt-14 grid sm:grid-cols-2 gap-10">
+      <div ref={doneRef} className="mt-14 grid sm:grid-cols-2 gap-10">
         <div>
           <p className="font-mono text-xs uppercase tracking-widest text-signal mb-5">Shipped</p>
           <ul className="space-y-3">
             {done.map((item, i) => (
-              <motion.li
-                key={item}
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.6 }}
-                transition={{ duration: 0.4, delay: i * 0.05 }}
-                className="flex items-start gap-3 text-sm text-ink-soft leading-relaxed"
-              >
-                <Check className="size-4 text-signal shrink-0 mt-0.5" />
-                {item}
-              </motion.li>
+              <DoneItem key={item} item={item} index={i} total={done.length} progress={doneSpring} />
             ))}
           </ul>
         </div>

@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { Link } from "wouter";
 import { ArrowRight, BookOpen } from "lucide-react";
+import { SplitText } from "./split-text";
 
 export function Hero() {
   return (
@@ -35,14 +36,12 @@ export function Hero() {
         Voice Agent Infrastructure
       </motion.p>
 
-      <motion.h1
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.1 }}
+      <SplitText
+        as="h1"
+        text="OpenVent"
+        delay={0.15}
         className="text-6xl sm:text-8xl font-semibold tracking-tight text-center"
-      >
-        OpenVent
-      </motion.h1>
+      />
 
       <motion.p
         initial={{ opacity: 0, y: 16 }}
@@ -68,7 +67,7 @@ export function Hero() {
           Read the Docs
         </Link>
         <a
-          href="#pipeline"
+          href="#architecture"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-md border border-border text-ink font-medium hover:bg-paper-2 transition-colors"
         >
           See how it works

@@ -1,4 +1,6 @@
-import { motion } from "motion/react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Plus } from "lucide-react";
 import { SectionLabel } from "./section-label";
 
 const faqs = [
@@ -21,27 +23,53 @@ const faqs = [
 ];
 
 export function Faq() {
+  const [open, setOpen] = useState<number | null>(0);
+
   return (
     <section className="max-w-3xl mx-auto px-6 py-24 sm:py-32">
-      <SectionLabel index="08" label="Questions" />
+      <SectionLabel index="07" label="Questions" />
       <h2 className="text-3xl sm:text-4xl font-semibold leading-tight max-w-2xl">
         Straight answers, not marketing copy.
       </h2>
 
       <div className="mt-12 divide-y divide-border border-t border-border">
-        {faqs.map((f, i) => (
-          <motion.div
-            key={f.q}
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.45, delay: i * 0.06 }}
-            className="py-6"
-          >
-            <h3 className="font-semibold text-lg">{f.q}</h3>
-            <p className="mt-2 text-sm text-ink-soft leading-relaxed max-w-2xl">{f.a}</p>
-          </motion.div>
-        ))}
+        {faqs.map((f, i) => {
+          const isOpen = open === i;
+          return (
+            <motion.div
+              key={f.q}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.45, delay: i * 0.06 }}
+            >
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : i)}
+                className="w-full py-6 flex items-center justify-between gap-4 text-left"
+                aria-expanded={isOpen}
+              >
+                <h3 className="font-semibold text-lg">{f.q}</h3>
+                <Plus
+                  className={`size-4 text-ink-soft shrink-0 transition-transform duration-300 ${isOpen ? "rotate-45 text-ember" : ""}`}
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <p className="pb-6 text-sm text-ink-soft leading-relaxed max-w-2xl">{f.a}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );
