@@ -685,5 +685,80 @@ check for both the populated and null-field cases.
 
 ---
 
-*Next entry number: ADR-023. Add new entries above this line, keeping numbering sequential and dates
+---
+
+## ADR-023 — Cross-call memory: flat key/value overlay, merged not replaced
+**Date:** 2026-07-08
+
+**Context:** `capturedState` (ADR-012) is scoped to a single call — a returning caller starts from zero
+every time, which the ROADMAP had already flagged ("OpenVent doesn't have this at all today"). Needed a
+mechanism that survives across calls without turning into a second, competing source of truth against
+`capturedState`, and without an unbounded per-caller history that would grow the prompt injection cost
+forever.
+
+**Decision:** New table `callerMemory`, one row per phone number, a flat JSON key/value `facts` column —
+deliberately the same shape as `capturedState`, not a free-text summary and not a call-by-call log. On
+each call's `finalizeCall`, `upsertCallerMemory` merges that call's `capturedState` into the existing
+row (`{ ...existing, ...newFacts }` — later calls overwrite matching keys, new keys accumulate), a no-op
+if nothing was captured. No LLM summarization call involved — this stays free to compute. Which number
+is "the human" depends on call direction (`resolveHumanNumber`): `fromNumber` on an inbound call, but
+`toNumber` on an outbound call, since `fromNumber` there is the operator's own Twilio number, not a real
+person — worth a dedicated pure function since getting this backwards would silently key memory off the
+operator's own number. Injected into the system prompt via `buildCallerMemoryBlock`, clearly labeled
+"from a previous call... may be outdated" — distinct wording from `buildKnownFactsBlock`'s this-call
+facts, which the model treats as settled ground truth. `runVoiceAgentGreeting` previously didn't forward
+`onLatency` *or* accept `callerMemory` at all — both gaps fixed together since they're the same call site.
+
+**Consequences:** New `caller-memory.ts` module, `resolveHumanNumber` unit-tested directly (pure
+function); `getCallerMemory`/`upsertCallerMemory` aren't unit-tested against a real DB (consistent with
+how the rest of this file's DB-touching code is verified — integration-level via the live pipeline, not
+mocked). No changes to `capturedState`'s own behavior or table. Additive migration only.
+
+---
+
+## ADR-024 — Fixed a repo-wide silent typecheck gap: `tsc --noEmit` was checking nothing
+**Date:** 2026-07-08
+
+**Context:** While building Phase 1/2, `bunx tsc --noEmit` (invoked exactly as `packages/web`'s
+`typecheck` and `build` scripts run it, and exactly as `.github/workflows/ci.yml` runs it in CI)
+reported zero errors on a file that was — confirmed by direct inspection — missing an import and
+referencing an undefined name. Root cause: `packages/web/tsconfig.json` is a solution-style config
+(`"files": []`, only `"references"` to `tsconfig.app.json` and `tsconfig.node.json`). Running plain
+`tsc --noEmit` against a references-only config with no `--build` flag does nothing — it doesn't error,
+it silently type-checks an empty file set and exits 0. This has been true since the project template was
+scaffolded, meaning **CI's typecheck step, and every "tsc clean" verification claimed in this project's
+history (including this session's own ADR-020 and ADR-022), was not actually checking anything.**
+Running `tsc -b` (or `-p tsconfig.app.json` / `-p tsconfig.node.json` explicitly) surfaced real,
+pre-existing errors: several dashboard pages (`calls-list.tsx`, `dnc.tsx`, `call-detail.tsx`) accessed
+properties directly on a Hono client's `{error} | {data}` union return type without narrowing first
+(worked at runtime because the error branch never actually fires in normal use, but was never provably
+type-safe), `admin-key-gate.tsx`'s typed RPC call resolved to `never` (root cause not fully isolated;
+worked around by using a plain `fetch` there instead, since that call site only needs the HTTP status,
+not a typed payload), `dnc.tsx` used a nonexistent `entry.id` (the DNC entry type has no `id` field —
+fixed to key on `entry.phoneNumber`, which is actually unique), an unused `motion` import in `stack.tsx`,
+and a `MotionValue<unknown>` vs `MotionValue<number>` mismatch in `architecture.tsx` from an untyped
+`ReturnType<typeof useTransform>`. Also surfaced, and separately worth noting: this session's own edits
+to `stream.ts`, `deepgram.ts`, `agent.ts`, `routes.ts`, and `call-detail.tsx` had several instances of an
+edit silently not landing (a call site referencing a name that was never actually declared) — invisible
+until real typechecking existed to catch it.
+
+**Decision:** Changed `packages/web/package.json`'s `typecheck` script from `tsc --noEmit` to `tsc -b`,
+and `build` from `tsc --noEmit && vite build` to `tsc -b && vite build` — both now honor the project
+references and actually check `src/web` and `src/server.ts`/`vite.config.ts`. Fixed every error this
+surfaced (listed above) rather than just the ones blocking this round's own work. Fixed
+`.github/workflows/ci.yml`'s stale `packages/vent-compliance` references (two steps) left over from the
+OpenVent rebrand (ADR-019/ADR-020) — the directory has been `packages/openvent-compliance` since then,
+meaning CI's compliance-package steps have also been silently misconfigured since that rebrand.
+
+**Consequences:** `bun run typecheck` and `bun run build` are now meaningfully trustworthy for the first
+time — any future "verified: tsc clean" claim in this file means something. No functional/runtime
+behavior changes beyond the `admin-key-gate.tsx` fetch-instead-of-RPC-client swap and the `dnc.tsx` key
+fix, both of which are strictly more correct than before. Worth remembering going forward: after any
+multi-file edit, verify with `tsc -b` (not bare `tsc --noEmit` on this project's root config), and
+re-grep-verify individual edits landed rather than trusting an edit tool's success response alone —
+demonstrated real value this round.
+
+---
+
+*Next entry number: ADR-025. Add new entries above this line, keeping numbering sequential and dates
 accurate to when the decision was actually made.*

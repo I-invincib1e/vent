@@ -101,6 +101,26 @@ export function buildKnownFactsBlock(capturedState?: Record<string, string>): st
   `;
 }
 
+/**
+ * Renders rolling cross-call memory (ADR-023) as prior-call context — clearly
+ * labeled as "from a previous call" so the model doesn't conflate it with
+ * `buildKnownFactsBlock`'s this-call facts (which it's allowed to treat as
+ * settled ground truth for the live call). Prior-call memory is context, not
+ * a confirmed fact for *this* call — the model should still confirm anything
+ * safety- or accuracy-critical rather than assume it still holds.
+ */
+export function buildCallerMemoryBlock(callerMemory?: Record<string, string>): string {
+  const entries = Object.entries(callerMemory ?? {});
+  if (entries.length === 0) return "";
+  const lines = entries.map(([field, value]) => `- ${field}: ${value}`).join("\n");
+  return dedent`
+
+
+    This caller has called before. From a previous call (may be outdated — confirm before relying on it):
+    ${lines}
+  `;
+}
+
 // If the model produces no text at all for a turn (e.g. gets stuck only
 // calling tools, or the provider returns empty output), we still need to say
 // *something* — dead air on a live call reads as a dropped connection.
@@ -127,6 +147,7 @@ export async function runVoiceAgentTurn({
   onLatency,
   llmProvider,
   capturedState,
+  callerMemory,
 }: {
   history: ModelMessage[];
   persona?: string;
@@ -140,6 +161,8 @@ export async function runVoiceAgentTurn({
   /** Structured facts captured so far this call — appended to the system
    * prompt as ground truth (see buildKnownFactsBlock). */
   capturedState?: Record<string, string>;
+  /** Rolling facts from previous calls with this same number (ADR-023) — see buildCallerMemoryBlock. */
+  callerMemory?: Record<string, string>;
 }): Promise<string> {
   const timeoutController = new AbortController();
   const timeout = setTimeout(() => timeoutController.abort(), TURN_TIMEOUT_MS);
@@ -153,7 +176,10 @@ export async function runVoiceAgentTurn({
   try {
     const result = streamText({
       model: resolveVoiceModel(llmProvider),
-      system: (persona ?? DEFAULT_PERSONA) + buildKnownFactsBlock(capturedState),
+      system:
+        (persona ?? DEFAULT_PERSONA) +
+        buildCallerMemoryBlock(callerMemory) +
+        buildKnownFactsBlock(capturedState),
       messages: history,
       tools: voiceTools,
       stopWhen: stepCountIs(6),
@@ -209,6 +235,7 @@ export function runVoiceAgentGreeting({
   signal,
   capturedState,
   onLatency,
+  callerMemory,
 }: {
   persona?: string;
   onTextDelta: (delta: string) => void;
@@ -218,6 +245,8 @@ export function runVoiceAgentGreeting({
   /** Reports time-to-first-token — the greeting is usually the first turn of the call, so this is
    * typically what feeds the call-level LLM TTFT metric (see stream.ts's callLatency capture). */
   onLatency?: (ms: number, model: string) => void;
+  /** Rolling facts from previous calls with this same number (ADR-023). */
+  callerMemory?: Record<string, string>;
 }) {
   return runVoiceAgentTurn({
     history: [
@@ -231,5 +260,6 @@ export function runVoiceAgentGreeting({
     signal,
     capturedState,
     onLatency,
+    callerMemory,
   });
 }

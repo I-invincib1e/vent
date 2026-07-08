@@ -26,7 +26,8 @@ export function CallsListPage() {
     refetchInterval: 5000,
   });
 
-  const rows = [...(calls.data?.calls ?? [])].reverse();
+  const callRows = calls.data && "calls" in calls.data ? calls.data.calls : [];
+  const rows = [...callRows].reverse();
 
   return (
     <div>

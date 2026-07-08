@@ -26,14 +26,14 @@ jobs:
       - name: Typecheck (web)
         run: cd packages/web && bun run typecheck
 
-      - name: Typecheck (vent-compliance)
-        run: cd packages/vent-compliance && bun run typecheck
+      - name: Typecheck (openvent-compliance)
+        run: cd packages/openvent-compliance && bun run typecheck
 
       - name: Test (web) — voice pipeline, integrations, resilience layer
         run: cd packages/web && bun run test
 
-      - name: Test (vent-compliance) — DNC, calling-window, HIPAA, GDPR, national-DNC adapter
-        run: cd packages/vent-compliance && bun run test
+      - name: Test (openvent-compliance) — DNC, calling-window, HIPAA, GDPR, national-DNC adapter
+        run: cd packages/openvent-compliance && bun run test
 
       - name: Build (web)
         # No real DATABASE_URL/API keys needed — this is a static build

@@ -49,6 +49,8 @@ export function DncPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dnc"] }),
   });
 
+  const dncRows = list.data && "doNotCall" in list.data ? list.data.doNotCall : [];
+
   return (
     <div>
       <div className="mb-8">
@@ -95,8 +97,8 @@ export function DncPage() {
       {error && <p className="text-sm text-destructive -mt-6 mb-6">{error}</p>}
 
       <div className="rounded-lg border border-border divide-y divide-border">
-        {(list.data?.doNotCall ?? []).map((entry) => (
-          <div key={entry.id} className="flex items-center justify-between px-4 py-3">
+        {dncRows.map((entry) => (
+          <div key={entry.phoneNumber} className="flex items-center justify-between px-4 py-3">
             <div>
               <div className="font-mono text-sm">{entry.phoneNumber}</div>
               <div className="text-xs text-ink-soft mt-0.5">
@@ -113,7 +115,7 @@ export function DncPage() {
             </button>
           </div>
         ))}
-        {list.data?.doNotCall?.length === 0 && (
+        {dncRows.length === 0 && (
           <div className="px-4 py-8 text-sm text-ink-soft text-center">No numbers on the list.</div>
         )}
       </div>

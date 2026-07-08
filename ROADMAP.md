@@ -86,8 +86,9 @@ commit + ADR entry, non-breaking on its own:
 - [x] **Per-call latency breakdown** ✅ shipped — `callLatency` table, first-value-only per call (STT
       connect, LLM time-to-first-token, TTS first byte), new `/calls/:id/latency` endpoint, new dashboard
       panel. See ADR-022.
-- [ ] **Cross-call memory** — a per-phone-number rolling summary/history, complementing (not replacing)
-      the structured `capturedState` engine.
+- [x] **Cross-call memory** ✅ shipped — `callerMemory` table, flat key/value overlay merged (not
+      replaced) per phone number, injected into the system prompt as prior-call context distinct from
+      this-call `capturedState`. See ADR-023.
 - [ ] **Multi-user dashboard auth** — labeled API keys (create/list/revoke, with a label + last-used
       timestamp), not full accounts. The existing `ADMIN_API_KEY` env var keeps working unchanged.
 - [ ] **Redis-backed session storage** — optional, opt-in via `REDIS_URL`. Default stays in-memory

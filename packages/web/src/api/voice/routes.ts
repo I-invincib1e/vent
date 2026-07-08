@@ -21,7 +21,7 @@ import { twilioClient, getPublicUrl, getWsUrl } from "./twilio-client";
 import { sessionStore } from "./session-store";
 import { dispatchWebhook, resolveWebhookUrl } from "./webhooks";
 import { db } from "../database";
-import { calls } from "../database/schema";
+import { calls, callLatency } from "../database/schema";
 import { eq } from "drizzle-orm";
 import {
   checkOutboundCallCompliance,

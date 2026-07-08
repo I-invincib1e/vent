@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { motion, useScroll, useTransform, useSpring } from "motion/react";
+import { motion, useScroll, useTransform, useSpring, type MotionValue } from "motion/react";
 import { PhoneCall, LayoutDashboard } from "lucide-react";
 import { SectionLabel } from "./section-label";
 import { TwilioLogo, DeepgramLogo, ElevenLabsLogo, CartesiaLogo } from "./logos";
@@ -172,7 +172,7 @@ function DiagramNode({
   label: string;
   sub: string;
   hub?: boolean;
-  style: { opacity: ReturnType<typeof useTransform>; y: ReturnType<typeof useTransform> };
+  style: { opacity: MotionValue<number>; y: MotionValue<number> };
 }) {
   return (
     <motion.div style={style} className="text-center">

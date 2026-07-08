@@ -32,6 +32,9 @@ export function connectDeepgram(
   onTranscript: DeepgramTranscriptHandler,
   onFatalError?: (err: unknown) => void,
   onStatsUpdate?: (stats: DeepgramStats) => void,
+  /** Fires once, on the very first successful connect (not on reconnects) — the
+   * "STT connect" leg of the per-call latency breakdown, see database/schema.ts's callLatency. */
+  onConnected?: (ms: number) => void,
 ) {
   let ws: WebSocket;
   let closedIntentionally = false;
@@ -39,6 +42,8 @@ export function connectDeepgram(
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let isOpen = false;
   let disconnectedAt: number | null = null;
+  let hasReportedInitialConnect = false;
+  const connectRequestedAt = Date.now();
 
   const stats: DeepgramStats = { reconnectCount: 0, totalGapMs: 0 };
   const audioBuffer: Uint8Array[] = [];

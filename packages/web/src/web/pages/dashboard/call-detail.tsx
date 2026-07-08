@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { motion } from "motion/react";
-import { ArrowLeft, Sparkles, Wrench, PlayCircle, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Sparkles, Wrench, PlayCircle, ShieldCheck, Gauge } from "lucide-react";
 import { api } from "../../lib/api";
 import { adminHeaders } from "../../lib/admin-key";
 
@@ -24,6 +24,17 @@ async function downloadAudit(callId: string) {
   a.download = `vent-audit-call-${callId}.txt`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function LatencyRow({ label, ms }: { label: string; ms: number | null }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 text-sm">
+      <span className="text-ink-soft">{label}</span>
+      <span className={`font-mono ${ms == null ? "text-ink-soft/50 italic text-xs" : "font-medium"}`}>
+        {ms == null ? "not recorded" : `${ms}ms`}
+      </span>
+    </div>
+  );
 }
 
 export function CallDetailPage() {
@@ -71,8 +82,10 @@ export function CallDetailPage() {
   });
 
   const row = call.data && "call" in call.data ? call.data.call : undefined;
-  const latencyRow = latency.data?.latency;
+  const latencyRow = latency.data && "latency" in latency.data ? latency.data.latency : undefined;
   const facts = Object.entries(row?.capturedState ?? {});
+  const transcriptRows = transcript.data && "transcript" in transcript.data ? transcript.data.transcript : [];
+  const toolCallRows = toolCalls.data && "toolCalls" in toolCalls.data ? toolCalls.data.toolCalls : [];
 
   return (
     <div>
@@ -117,13 +130,13 @@ export function CallDetailPage() {
         <div>
           <h2 className="text-xs font-mono uppercase tracking-[0.15em] text-ink-soft mb-3">Transcript</h2>
           <div className="rounded-lg border border-border divide-y divide-border">
-            {(transcript.data?.transcript ?? []).map((t) => (
+            {transcriptRows.map((t) => (
               <div key={t.id} className={`px-4 py-3 ${t.role === "agent" ? "bg-paper-2/40" : ""}`}>
                 <div className="text-[10px] font-mono uppercase tracking-wider text-ink-soft mb-1">{t.role}</div>
                 <div className="text-sm leading-relaxed">{t.text}</div>
               </div>
             ))}
-            {transcript.data?.transcript?.length === 0 && (
+            {transcriptRows.length === 0 && (
               <div className="px-4 py-6 text-sm text-ink-soft text-center">No transcript yet.</div>
             )}
           </div>
@@ -133,7 +146,7 @@ export function CallDetailPage() {
             Tool calls
           </h2>
           <div className="rounded-lg border border-border divide-y divide-border">
-            {(toolCalls.data?.toolCalls ?? []).map((tc) => (
+            {toolCallRows.map((tc) => (
               <div key={tc.id} className="px-4 py-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-mono">{tc.toolName}</span>
@@ -148,7 +161,7 @@ export function CallDetailPage() {
                 </pre>
               </div>
             ))}
-            {toolCalls.data?.toolCalls?.length === 0 && (
+            {toolCallRows.length === 0 && (
               <div className="px-4 py-6 text-sm text-ink-soft text-center">No tool calls yet.</div>
             )}
           </div>

@@ -8,9 +8,10 @@ import { getNumberConfig } from "./number-config";
 import { runWorkflowForOutcome } from "./workflows/engine";
 import type { WorkflowOutcome } from "./workflows/types";
 import { dispatchWebhook, resolveWebhookUrl } from "./webhooks";
+import { getCallerMemory, upsertCallerMemory, resolveHumanNumber } from "./caller-memory";
 import { db } from "../database";
 import { withRetry } from "../database/with-retry";
-import { calls, transcripts, toolCalls } from "../database/schema";
+import { calls, transcripts, toolCalls, callLatency } from "../database/schema";
 import { eq } from "drizzle-orm";
 
 type TwilioEvent =
@@ -67,6 +68,10 @@ export function createVoiceStreamHandlers() {
   function recordLlmLatency(ms: number) {
     if (llmTtftMs === undefined) llmTtftMs = ms;
   }
+
+  /** Cross-call memory (ADR-023) — the human's number for this call, and their rolling facts, if any. */
+  let humanNumber: string | undefined;
+  let callerMemoryFacts: Record<string, string> = {};
 
   let deepgram: ReturnType<typeof connectDeepgram> | null = null;
   let tts: TtsConnection | null = null;
@@ -158,6 +163,12 @@ export function createVoiceStreamHandlers() {
           .catch((err) => console.error("[voice] failed to persist call latency", err));
       }
 
+      // Cross-call memory (ADR-023) — merge this call's captured facts into
+      // the caller's rolling memory. No-op if nothing was captured.
+      if (humanNumber && dbCallId) {
+        await upsertCallerMemory(humanNumber, capturedState, dbCallId);
+      }
+
       sessionStore.delete(callSid);
 
       // Workflows (see ./workflows/) run automatically off the captured
@@ -239,13 +250,24 @@ export function createVoiceStreamHandlers() {
         },
         llmProvider: llmProviderOverride,
         capturedState,
+        callerMemory: callerMemoryFacts,
       }),
     );
   }
 
   async function runGreeting(ws: Sendable) {
     await speak(ws, (signal) =>
-      runVoiceAgentGreeting({ persona, signal, onTextDelta: (delta) => tts?.sendText(delta), capturedState }),
+      runVoiceAgentGreeting({
+        persona,
+        signal,
+        onTextDelta: (delta) => tts?.sendText(delta),
+        capturedState,
+        callerMemory: callerMemoryFacts,
+        onLatency: (ms, model) => {
+          console.log(`[voice] greeting time-to-first-token: ${ms}ms (${model})`);
+          recordLlmLatency(ms);
+        },
+      }),
     );
   }
 
@@ -321,6 +343,15 @@ export function createVoiceStreamHandlers() {
             dbCallId = row?.id ?? null;
             toNumber = row?.toNumber;
             capturedState = { ...row?.capturedState, ...session?.capturedState };
+
+            // Cross-call memory (ADR-023) — a returning caller's prior facts,
+            // separate from this call's capturedState. Best-effort: a lookup
+            // failure shouldn't block the call from proceeding.
+            if (row) {
+              humanNumber = resolveHumanNumber(row.direction, row.fromNumber, row.toNumber);
+              callerMemoryFacts = await getCallerMemory(humanNumber).catch(() => ({}));
+            }
+
             // Per-number config (see number-config.ts) applies to every call
             // on that number; an explicit session override (outbound trigger,
             // e.g. POST /calls/outbound) takes precedence when both exist.

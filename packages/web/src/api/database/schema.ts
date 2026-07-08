@@ -49,6 +49,23 @@ export const callLatency = sqliteTable("call_latency", {
     .$defaultFn(() => new Date()),
 });
 
+/**
+ * Rolling per-phone-number memory, alongside (not replacing) the per-call
+ * `capturedState` engine — see ADR-023. One row per phone number: a flat
+ * key/value overlay of facts learned across every call from/to that number,
+ * merged (not replaced) on each call, so a returning caller doesn't start
+ * from zero. Deliberately not a full call-history log — keeps prompt-
+ * injection cost bounded no matter how many times someone's called.
+ */
+export const callerMemory = sqliteTable("caller_memory", {
+  phoneNumber: text("phone_number").primaryKey(),
+  facts: text("facts", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
+  lastCallId: integer("last_call_id").references(() => calls.id, { onDelete: "set null" }),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export const transcripts = sqliteTable("transcripts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   callId: integer("call_id")
