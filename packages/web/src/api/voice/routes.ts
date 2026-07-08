@@ -53,10 +53,10 @@ export const voice = new Hono()
     const from = String(body.From ?? "");
     const to = String(body.To ?? "");
 
-    if (callSid && !sessionStore.get(callSid)) {
-      sessionStore.set(callSid, { callSid, direction: "inbound" });
+    if (callSid && !(await sessionStore.get(callSid))) {
+      await sessionStore.set(callSid, { callSid, direction: "inbound" });
     }
-    const session = callSid ? sessionStore.get(callSid) : undefined;
+    const session = callSid ? await sessionStore.get(callSid) : undefined;
     const webhookUrl = resolveWebhookUrl(session?.webhookUrl);
 
     if (callSid) {
@@ -124,7 +124,7 @@ export const voice = new Hono()
       recordingStatusCallback: `${getPublicUrl()}/api/voice/recording-status`,
     });
 
-    sessionStore.set(call.sid, { callSid: call.sid, direction: "outbound", persona, webhookUrl });
+    await sessionStore.set(call.sid, { callSid: call.sid, direction: "outbound", persona, webhookUrl });
 
     return c.json({ callSid: call.sid, status: call.status }, 201);
   })
@@ -151,7 +151,7 @@ export const voice = new Hono()
         .catch(() => undefined as unknown);
 
       if (isTerminal) {
-        const session = sessionStore.get(callSid);
+        const session = await sessionStore.get(callSid);
         void dispatchWebhook(resolveWebhookUrl(session?.webhookUrl), "call.completed", {
           callSid,
           status,
@@ -180,7 +180,7 @@ export const voice = new Hono()
           }
         }
 
-        sessionStore.delete(callSid);
+        await sessionStore.delete(callSid);
       }
     }
     return c.text("", 200);
@@ -199,7 +199,7 @@ export const voice = new Hono()
         .where(eq(calls.twilioCallSid, callSid))
         .catch(() => undefined as unknown);
 
-      const session = sessionStore.get(callSid);
+      const session = await sessionStore.get(callSid);
       void dispatchWebhook(resolveWebhookUrl(session?.webhookUrl), "call.recording_ready", {
         callSid,
         recordingUrl: fullUrl,

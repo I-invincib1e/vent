@@ -64,3 +64,28 @@ Different Twilio numbers can run different agent personalities without a redeplo
 ```json
 { "+15551234567": "You are a scheduling assistant for a dental clinic. Keep it warm and brief." }
 ```
+
+## Scaling to multiple instances
+
+By default, per-call session state (`session-store.ts` — persona/provider overrides, workflow retry
+metadata, in-progress `capturedState`) lives in an in-memory `Map`. That's fine, and requires zero
+configuration, for a single running instance — which is almost certainly what you have if you're
+self-hosting solo or for one team. It stops being enough the moment you run more than one instance behind
+a load balancer: an outbound call triggered against instance A, whose Twilio webhook then lands on
+instance B, won't find the session instance A set up for it.
+
+If you do need more than one instance, set `REDIS_URL` and the session store automatically switches to a
+Redis-backed implementation (ADR-026) — same interface, shared across every instance, native TTL instead
+of the in-memory backend's manual sweep. Nothing else changes; this is a config flag, not a code change,
+and you don't need to touch it at all if you're running a single instance.
+
+Any Redis-compatible service works — this is a plain `REDIS_URL` connection string, no vendor lock-in.
+If you don't already run Redis somewhere, [Upstash](https://upstash.com)'s free tier is the least-setup
+option (serverless, no server to run yourself); a self-hosted Redis or any other managed Redis works
+identically.
+
+```bash
+REDIS_URL=redis://user:password@host:6379
+# or, from Upstash's dashboard:
+REDIS_URL=rediss://default:<token>@<endpoint>.upstash.io:6379
+```

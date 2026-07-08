@@ -67,7 +67,7 @@ async function executeDueScheduledCalls() {
         recordingStatusCallback: `${getPublicUrl()}/api/voice/recording-status`,
       });
 
-      sessionStore.set(call.sid, {
+      await sessionStore.set(call.sid, {
         callSid: call.sid,
         direction: "outbound",
         persona: row.persona ?? undefined,

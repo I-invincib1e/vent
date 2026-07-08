@@ -78,10 +78,10 @@ synthesis and reasoning behind the reprioritization below.
       `/dashboard/audit` page). Directly requested, independently, as "the thing that actually kills the
       compliance fear" — see ADR-017. 10 new tests, 74 total across both packages, regression-tested live.
 
-## In progress
+## Four-item round ✅ shipped
 
-Shipping the four items below as a single round, ordered lowest-structural-risk first — each is its own
-commit + ADR entry, non-breaking on its own:
+All four items below shipped as one round, ordered lowest-structural-risk first — each its own commit +
+ADR entry, non-breaking on its own:
 
 - [x] **Per-call latency breakdown** ✅ shipped — `callLatency` table, first-value-only per call (STT
       connect, LLM time-to-first-token, TTS first byte), new `/calls/:id/latency` endpoint, new dashboard
@@ -92,8 +92,9 @@ commit + ADR entry, non-breaking on its own:
 - [x] **Multi-user dashboard auth** ✅ shipped — labeled API keys (create/list/revoke, with a label +
       last-used timestamp), not full accounts. `ADMIN_API_KEY` env var keeps working unchanged. New
       `/dashboard/settings` page. See ADR-025.
-- [ ] **Redis-backed session storage** — optional, opt-in via `REDIS_URL`. Default stays in-memory
-      (today's exact behavior) for anyone who doesn't set it; only needed to run more than one instance.
+- [x] **Redis-backed session storage** ✅ shipped — optional, opt-in via `REDIS_URL`. Default stays
+      in-memory (today's exact behavior) for anyone who doesn't set it; only needed to run more than one
+      instance. Verified against a real local Redis instance, not just inferred. See ADR-026.
 
 Telephony provider abstraction (making the pipeline not Twilio-specific) was considered as part of this
 round and deliberately deferred — see ADR-021 for the concrete coupling points found and why it's its own

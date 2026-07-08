@@ -134,7 +134,7 @@ export function createVoiceStreamHandlers() {
     turnAbortController?.abort();
     if (maxDurationTimer) clearTimeout(maxDurationTimer);
     if (callSid) {
-      const previousAttempt = sessionStore.get(callSid)?.workflowAttempt;
+      const previousAttempt = (await sessionStore.get(callSid))?.workflowAttempt;
 
       await withRetry(
         () =>
@@ -169,7 +169,7 @@ export function createVoiceStreamHandlers() {
         await upsertCallerMemory(humanNumber, capturedState, dbCallId);
       }
 
-      sessionStore.delete(callSid);
+      await sessionStore.delete(callSid);
 
       // Workflows (see ./workflows/) run automatically off the captured
       // disposition — no manual step required to trigger a retry/DNC-add/
@@ -332,7 +332,7 @@ export function createVoiceStreamHandlers() {
         if (msg.event === "start") {
           streamSid = msg.start.streamSid;
           callSid = msg.start.callSid;
-          const session = callSid ? sessionStore.get(callSid) : undefined;
+          const session = callSid ? await sessionStore.get(callSid) : undefined;
 
           if (callSid) {
             const [row] = await db

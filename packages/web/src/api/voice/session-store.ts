@@ -1,14 +1,17 @@
 /**
- * In-memory registry of active/pending call sessions, keyed by Twilio CallSid.
- * Lets the outbound-call trigger pass a custom persona/context into the
- * WebSocket stream handler once Twilio connects the media stream for that call.
+ * Registry of active/pending call sessions, keyed by Twilio CallSid. Lets the
+ * outbound-call trigger pass a custom persona/context into the WebSocket
+ * stream handler once Twilio connects the media stream for that call.
  *
- * Note: this is process-local state. Fine for a single-instance deployment;
- * swap for Redis/DB-backed storage if you scale to multiple instances.
+ * Two backends (ADR-026):
+ *   - In-memory (default) — process-local, zero config, exactly today's
+ *     behavior. Fine for a single instance.
+ *   - Redis-backed — opt-in via `REDIS_URL`, needed only if you run more
+ *     than one instance and need session state shared across them.
  *
- * A background sweep drops stale sessions (default: older than 1 hour) so a
- * call that never reaches Twilio's `stop` event — crashed leg, dropped
- * network, etc — doesn't leak memory forever.
+ * The interface is async either way (even the in-memory implementation),
+ * so switching backends is a config change, not a code change anywhere that
+ * calls this module.
  */
 export type CallSession = {
   callSid: string;
@@ -36,41 +39,119 @@ export type CallSession = {
   capturedState?: Record<string, string>;
 };
 
-const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
-const SWEEP_INTERVAL_MS = 10 * 60 * 1000; // every 10 minutes
-
-const sessions = new Map<string, CallSession>();
-
-export const sessionStore = {
-  set(callSid: string, session: Omit<CallSession, "createdAt">) {
-    sessions.set(callSid, { ...session, createdAt: Date.now() });
-  },
-  get(callSid: string) {
-    return sessions.get(callSid);
-  },
-  update(callSid: string, patch: Partial<CallSession>) {
-    const existing = sessions.get(callSid);
-    if (existing) sessions.set(callSid, { ...existing, ...patch });
-  },
-  delete(callSid: string) {
-    sessions.delete(callSid);
-  },
-  size() {
-    return sessions.size;
-  },
+export type SessionStore = {
+  set(callSid: string, session: Omit<CallSession, "createdAt">): Promise<void>;
+  get(callSid: string): Promise<CallSession | undefined>;
+  update(callSid: string, patch: Partial<CallSession>): Promise<void>;
+  delete(callSid: string): Promise<void>;
+  /** Best-effort diagnostic count, not meant for hot-path logic — on the Redis
+   * backend this is an O(n) key scan, not a cheap counter. */
+  size(): Promise<number>;
 };
 
-function sweep() {
-  const cutoff = Date.now() - SESSION_TTL_MS;
-  for (const [callSid, session] of sessions) {
-    if (session.createdAt < cutoff) {
-      console.warn(`[session-store] dropping stale session for ${callSid} (age > 1h)`);
-      sessions.delete(callSid);
+const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000; // every 10 minutes (in-memory backend only)
+
+class MemorySessionStore implements SessionStore {
+  private sessions = new Map<string, CallSession>();
+
+  constructor() {
+    // Only run the sweep under the real server process, not during typecheck/build/tests.
+    if (typeof setInterval !== "undefined") {
+      setInterval(() => this.sweep(), SWEEP_INTERVAL_MS).unref?.();
+    }
+  }
+
+  async set(callSid: string, session: Omit<CallSession, "createdAt">) {
+    this.sessions.set(callSid, { ...session, createdAt: Date.now() });
+  }
+
+  async get(callSid: string) {
+    return this.sessions.get(callSid);
+  }
+
+  async update(callSid: string, patch: Partial<CallSession>) {
+    const existing = this.sessions.get(callSid);
+    if (existing) this.sessions.set(callSid, { ...existing, ...patch });
+  }
+
+  async delete(callSid: string) {
+    this.sessions.delete(callSid);
+  }
+
+  async size() {
+    return this.sessions.size;
+  }
+
+  private sweep() {
+    const cutoff = Date.now() - SESSION_TTL_MS;
+    for (const [callSid, session] of this.sessions) {
+      if (session.createdAt < cutoff) {
+        console.warn(`[session-store] dropping stale session for ${callSid} (age > 1h)`);
+        this.sessions.delete(callSid);
+      }
     }
   }
 }
 
-// Only run the sweep under the real server process, not during typecheck/build/tests.
-if (typeof setInterval !== "undefined") {
-  setInterval(sweep, SWEEP_INTERVAL_MS).unref?.();
+/**
+ * Redis-backed implementation — one JSON-serialized value per key, native
+ * TTL expiry instead of the in-memory backend's manual sweep interval.
+ * Lazily constructs the ioredis client so importing this module never
+ * requires `ioredis` to be reachable unless `REDIS_URL` is actually set.
+ */
+class RedisSessionStore implements SessionStore {
+  private client: import("ioredis").Redis;
+  private keyPrefix = "openvent:session:";
+
+  constructor(redisUrl: string) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Redis = require("ioredis") as typeof import("ioredis");
+    this.client = new Redis.default(redisUrl, { lazyConnect: false });
+    this.client.on("error", (err: unknown) => console.error("[session-store] Redis error", err));
+  }
+
+  private key(callSid: string) {
+    return `${this.keyPrefix}${callSid}`;
+  }
+
+  async set(callSid: string, session: Omit<CallSession, "createdAt">) {
+    const full: CallSession = { ...session, createdAt: Date.now() };
+    await this.client.set(this.key(callSid), JSON.stringify(full), "PX", SESSION_TTL_MS);
+  }
+
+  async get(callSid: string) {
+    const raw = await this.client.get(this.key(callSid));
+    return raw ? (JSON.parse(raw) as CallSession) : undefined;
+  }
+
+  async update(callSid: string, patch: Partial<CallSession>) {
+    const existing = await this.get(callSid);
+    if (!existing) return;
+    const merged = { ...existing, ...patch };
+    // Preserve remaining TTL rather than resetting the full hour on every
+    // small patch (e.g. a captureField update mid-call).
+    const ttl = await this.client.pttl(this.key(callSid));
+    await this.client.set(this.key(callSid), JSON.stringify(merged), "PX", ttl > 0 ? ttl : SESSION_TTL_MS);
+  }
+
+  async delete(callSid: string) {
+    await this.client.del(this.key(callSid));
+  }
+
+  async size() {
+    const keys = await this.client.keys(`${this.keyPrefix}*`);
+    return keys.length;
+  }
 }
+
+function createSessionStore(): SessionStore {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    console.log("[session-store] REDIS_URL set — using Redis-backed session storage");
+    return new RedisSessionStore(redisUrl);
+  }
+  return new MemorySessionStore();
+}
+
+export const sessionStore: SessionStore = createSessionStore();
