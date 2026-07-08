@@ -80,19 +80,22 @@ synthesis and reasoning behind the reprioritization below.
 
 ## In progress
 
-_(nothing actively in flight right now — see below for what's next, reprioritized after real community
-feedback — see `docs/strategy-2026-07.md` for the full synthesis)_
-
-## Next up — reprioritized from real feedback (four rounds, r/AI_Agents, r/VoiceAutomationAI, LinkedIn)
+Shipping the four items below as a single round, ordered lowest-structural-risk first — each is its own
+commit + ADR entry, non-breaking on its own:
 
 - [ ] **Per-call latency breakdown** — instrument STT connect time, first STT result, LLM time-to-first-
       token (already tracked, just not surfaced), TTS first-byte time, and total round-trip; show it on the
-      dashboard's call detail page instead of one console.log line. Confirmed real gap against our own code,
-      cheap to build. Now the top remaining priority.
-- [ ] **Cross-call memory** (lower priority) — a per-phone-number rolling summary/history, complementing
-      (not replacing) the structured `capturedState` engine. Distinct from Voximplant's `ApplicationStorage`
-      pattern in mechanism (ours should stay closer to structured facts, not raw chat-history replay) but
-      solves the same "remembers me from last time" use case, which OpenVent doesn't have at all today.
+      dashboard's call detail page instead of one console.log line.
+- [ ] **Cross-call memory** — a per-phone-number rolling summary/history, complementing (not replacing)
+      the structured `capturedState` engine.
+- [ ] **Multi-user dashboard auth** — labeled API keys (create/list/revoke, with a label + last-used
+      timestamp), not full accounts. The existing `ADMIN_API_KEY` env var keeps working unchanged.
+- [ ] **Redis-backed session storage** — optional, opt-in via `REDIS_URL`. Default stays in-memory
+      (today's exact behavior) for anyone who doesn't set it; only needed to run more than one instance.
+
+Telephony provider abstraction (making the pipeline not Twilio-specific) was considered as part of this
+round and deliberately deferred — see ADR-021 for the concrete coupling points found and why it's its own
+future round rather than a side effect of this one.
 
 ## Not started — researching first
 
