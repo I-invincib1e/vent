@@ -83,9 +83,9 @@ synthesis and reasoning behind the reprioritization below.
 Shipping the four items below as a single round, ordered lowest-structural-risk first — each is its own
 commit + ADR entry, non-breaking on its own:
 
-- [ ] **Per-call latency breakdown** — instrument STT connect time, first STT result, LLM time-to-first-
-      token (already tracked, just not surfaced), TTS first-byte time, and total round-trip; show it on the
-      dashboard's call detail page instead of one console.log line.
+- [x] **Per-call latency breakdown** ✅ shipped — `callLatency` table, first-value-only per call (STT
+      connect, LLM time-to-first-token, TTS first byte), new `/calls/:id/latency` endpoint, new dashboard
+      panel. See ADR-022.
 - [ ] **Cross-call memory** — a per-phone-number rolling summary/history, complementing (not replacing)
       the structured `capturedState` engine.
 - [ ] **Multi-user dashboard auth** — labeled API keys (create/list/revoke, with a label + last-used

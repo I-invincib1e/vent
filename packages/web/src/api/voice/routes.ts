@@ -230,6 +230,16 @@ export const voice = new Hono()
     return c.json({ toolCalls: rows }, 200);
   })
 
+  // Per-call latency breakdown (ADR-022) — STT connect time, LLM
+  // time-to-first-token, TTS first-audio-byte time. Null fields mean that
+  // stage's timing wasn't captured for this call (e.g. it ended before
+  // reaching that stage, or the call predates this feature) — not an error.
+  .get("/calls/:id/latency", requireAdminKey, async (c) => {
+    const id = Number(c.req.param("id"));
+    const [row] = await db.select().from(callLatency).where(eq(callLatency.callId, id)).limit(1);
+    return c.json({ latency: row ?? null }, 200);
+  })
+
   // Compliance audit trail for one call — who was called, when, under what
   // consent (was the recording/AI disclosure actually spoken, not just
   // configured), what disposition, current DNC status, and the full

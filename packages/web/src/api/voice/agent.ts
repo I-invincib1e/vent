@@ -208,12 +208,16 @@ export function runVoiceAgentGreeting({
   onTextDelta,
   signal,
   capturedState,
+  onLatency,
 }: {
   persona?: string;
   onTextDelta: (delta: string) => void;
   signal?: AbortSignal;
   /** Pre-seeded facts (e.g. from a CRM/workflow before an outbound call connects). */
   capturedState?: Record<string, string>;
+  /** Reports time-to-first-token — the greeting is usually the first turn of the call, so this is
+   * typically what feeds the call-level LLM TTFT metric (see stream.ts's callLatency capture). */
+  onLatency?: (ms: number, model: string) => void;
 }) {
   return runVoiceAgentTurn({
     history: [
@@ -226,5 +230,6 @@ export function runVoiceAgentGreeting({
     onTextDelta,
     signal,
     capturedState,
+    onLatency,
   });
 }

@@ -83,6 +83,10 @@ export function connectDeepgram(
     ws.addEventListener("open", () => {
       isOpen = true;
       reconnectAttempts = 0;
+      if (!hasReportedInitialConnect) {
+        hasReportedInitialConnect = true;
+        onConnected?.(Date.now() - connectRequestedAt);
+      }
       if (disconnectedAt) {
         const gap = Date.now() - disconnectedAt;
         stats.totalGapMs += gap;

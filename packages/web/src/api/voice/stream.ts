@@ -54,6 +54,20 @@ export function createVoiceStreamHandlers() {
   let ended = false;
   let maxDurationTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Per-call latency breakdown (see database/schema.ts's callLatency, ADR-022). Each is set at most
+   * once per call — first STT connect, first LLM time-to-first-token, first TTS first-audio-byte —
+   * and persisted as a single row when the call ends, not written continuously (unlike capturedState,
+   * these aren't needed for crash recovery, just for the dashboard after the fact).
+   */
+  let sttConnectMs: number | undefined;
+  let llmTtftMs: number | undefined;
+  let ttsFirstByteMs: number | undefined;
+
+  function recordLlmLatency(ms: number) {
+    if (llmTtftMs === undefined) llmTtftMs = ms;
+  }
+
   let deepgram: ReturnType<typeof connectDeepgram> | null = null;
   let tts: TtsConnection | null = null;
   let turnAbortController: AbortController | null = null;
@@ -129,6 +143,21 @@ export function createVoiceStreamHandlers() {
             .where(eq(calls.twilioCallSid, callSid!)),
         { label: "finalize-call" },
       );
+
+      // Per-call latency breakdown (ADR-022) — only write a row if we actually
+      // captured at least one metric, so a call that failed before Deepgram
+      // ever connected doesn't leave a pointless all-null row behind.
+      if (dbCallId && (sttConnectMs !== undefined || llmTtftMs !== undefined || ttsFirstByteMs !== undefined)) {
+        await db
+          .insert(callLatency)
+          .values({ callId: dbCallId, sttConnectMs, llmTtftMs, ttsFirstByteMs })
+          .onConflictDoUpdate({
+            target: callLatency.callId,
+            set: { sttConnectMs, llmTtftMs, ttsFirstByteMs, capturedAt: new Date() },
+          })
+          .catch((err) => console.error("[voice] failed to persist call latency", err));
+      }
+
       sessionStore.delete(callSid);
 
       // Workflows (see ./workflows/) run automatically off the captured
@@ -160,8 +189,10 @@ export function createVoiceStreamHandlers() {
     turnAbortController = new AbortController();
     agentIsSpeaking = true;
 
+    const ttsRequestedAt = Date.now();
     tts = connectTts(
       (base64Audio) => {
+        if (ttsFirstByteMs === undefined) ttsFirstByteMs = Date.now() - ttsRequestedAt;
         if (!streamSid) return;
         try {
           ws.send(JSON.stringify({ event: "media", streamSid, media: { payload: base64Audio } }));
@@ -202,7 +233,10 @@ export function createVoiceStreamHandlers() {
         signal,
         onTextDelta: (delta) => tts?.sendText(delta),
         onToolCall: (name, input, output) => void logToolCall(name, input, output),
-        onLatency: (ms, model) => console.log(`[voice] turn time-to-first-token: ${ms}ms (${model})`),
+        onLatency: (ms, model) => {
+          console.log(`[voice] turn time-to-first-token: ${ms}ms (${model})`);
+          recordLlmLatency(ms);
+        },
         llmProvider: llmProviderOverride,
         capturedState,
       }),
@@ -257,6 +291,9 @@ export function createVoiceStreamHandlers() {
                 .where(eq(calls.twilioCallSid, callSid!)),
             { label: "update-stt-stats" },
           );
+        },
+        (ms) => {
+          sttConnectMs = ms;
         },
       );
     },

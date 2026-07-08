@@ -60,7 +60,18 @@ export function CallDetailPage() {
     enabled: !!id,
   });
 
+  const latency = useQuery({
+    queryKey: ["call-latency", id],
+    queryFn: async () => {
+      const res = await api.voice.calls[":id"].latency.$get({ param: { id } }, { headers: adminHeaders() });
+      return res.json();
+    },
+    refetchInterval: 4000,
+    enabled: !!id,
+  });
+
   const row = call.data && "call" in call.data ? call.data.call : undefined;
+  const latencyRow = latency.data?.latency;
   const facts = Object.entries(row?.capturedState ?? {});
 
   return (
@@ -144,6 +155,16 @@ export function CallDetailPage() {
         </div>
 
         <div>
+          <h2 className="text-xs font-mono uppercase tracking-[0.15em] text-ink-soft mb-3 flex items-center gap-1.5">
+            <Gauge className="size-3.5 text-ember" />
+            Latency breakdown
+          </h2>
+          <div className="rounded-lg border border-border bg-card p-4 mb-6">
+            <LatencyRow label="STT connect" ms={latencyRow?.sttConnectMs ?? null} />
+            <LatencyRow label="LLM time-to-first-token" ms={latencyRow?.llmTtftMs ?? null} />
+            <LatencyRow label="TTS first byte" ms={latencyRow?.ttsFirstByteMs ?? null} />
+          </div>
+
           <h2 className="text-xs font-mono uppercase tracking-[0.15em] text-ink-soft mb-3 flex items-center gap-1.5">
             <Sparkles className="size-3.5 text-signal" />
             Captured state

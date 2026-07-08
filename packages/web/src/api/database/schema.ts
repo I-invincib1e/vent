@@ -27,6 +27,28 @@ export const calls = sqliteTable("calls", {
   endedAt: integer("ended_at", { mode: "timestamp" }),
 });
 
+/**
+ * Per-call latency breakdown — one row per call, filled in as each metric
+ * becomes available during the call and finalized at call end (see
+ * stream.ts's finalizeCall). All three columns are nullable: a call that
+ * ended before a given stage was reached (or shipped before this table
+ * existed) simply has no value for it, not a zero or an error. See ADR-022.
+ */
+export const callLatency = sqliteTable("call_latency", {
+  callId: integer("call_id")
+    .primaryKey()
+    .references(() => calls.id, { onDelete: "cascade" }),
+  /** Time from opening the Deepgram STT socket to it reporting ready (first connect only, not reconnects). */
+  sttConnectMs: integer("stt_connect_ms"),
+  /** Time-to-first-token from the LLM, captured on the first turn that produces one (usually the greeting). */
+  llmTtftMs: integer("llm_ttft_ms"),
+  /** Time from sending text to the TTS provider to receiving the first audio chunk back, first turn only. */
+  ttsFirstByteMs: integer("tts_first_byte_ms"),
+  capturedAt: integer("captured_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export const transcripts = sqliteTable("transcripts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   callId: integer("call_id")
