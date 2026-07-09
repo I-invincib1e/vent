@@ -115,6 +115,24 @@ future round rather than a side effect of this one.
       trail feature (now shipped) makes this package a more complete story than it was, but the decision to
       wait was about launch timing/positioning, not feature completeness — no change to when this happens.
 
+## Open for contribution
+
+These aren't on the maintainer's active build queue but are wanted — good targets if you want to send a
+PR without colliding with in-progress work. Open an issue to discuss approach first for anything non-trivial
+(see `CONTRIBUTING.md`):
+
+- [ ] Telephony provider abstraction beyond Twilio (Vonage, Plivo, Telnyx) — deliberately deferred by the
+      maintainer, documented in ADR-021, no code started
+- [ ] Per-persona required-field schemas for the state engine (see "Later" section below) — a scoped version
+      of this (a simple required-slots list per persona, not a full schema DSL) is a reasonable first PR
+- [ ] Additional pre-built integrations beyond what's shipped (see `docs/integrations.md`) — same
+      resilient-fetch pattern, same test style
+- [ ] Local mock mode for the voice pipeline so contributors can test call flows without real Twilio/
+      Deepgram/TTS credentials — currently the biggest friction point for new contributors per
+      `CONTRIBUTING.md`
+- [ ] `good first issue`-labeled docs gaps — anything in `docs/*.md` that's out of sync with the code, or
+      unclear to a new reader, is a welcome and low-risk PR
+
 ## Later — depends on what the feedback round surfaces
 
 These are directional, not committed, and will change based on what actually comes back from the

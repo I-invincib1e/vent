@@ -42,7 +42,7 @@ export function CtaFooter() {
         </motion.div>
 
         <p className="mt-16 font-mono text-xs text-paper/40">
-          Fair-code, free to self-host forever — OpenVent Sustainable Use License
+          Open source, free to self-host forever — Apache License 2.0
         </p>
       </div>
     </footer>

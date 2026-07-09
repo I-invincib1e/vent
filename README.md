@@ -108,11 +108,14 @@ See [`ROADMAP.md`](./ROADMAP.md) for what's actively being worked on to close th
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](./CONTRIBUTING.md) — project structure, dev setup gotchas, testing/docs
-expectations, and code style.
+OpenVent is open for contribution. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) — project structure, dev
+setup gotchas, testing/docs expectations, and code style — and [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)
+for the ground rules. Check [`ROADMAP.md`](./ROADMAP.md) before starting on something non-trivial, and see
+[`SECURITY.md`](./SECURITY.md) for reporting vulnerabilities privately.
 
 ## License
 
-Fair-code, under the **OpenVent Sustainable Use License** (based on the Sustainable Use License used by n8n) —
-see [LICENSE](./LICENSE). Free to self-host, modify, and use for your own internal or personal purposes,
-forever. Not licensed for repackaging as a competing hosted/managed service — see `DECISIONS.md` ADR-018.
+**Apache License 2.0** — see [LICENSE](./LICENSE). Fully open source (OSI-approved): use, modify,
+self-host, or build on top of it commercially, with a patent grant included. The "OpenVent" name and logo
+are trademarks, not covered by the code license — see [`TRADEMARK.md`](./TRADEMARK.md) if you're naming a
+fork or hosted service. See `DECISIONS.md` ADR-028 for why this replaced the earlier fair-code license.

@@ -3,6 +3,19 @@
 Thanks for looking at this. OpenVent is early — the codebase is small enough to read end to end in an
 afternoon, and that's intentional. This doc is about making that afternoon easier.
 
+OpenVent is Apache 2.0 licensed and genuinely open for contribution — no CLA, no fair-code fine print.
+Everyone participating is expected to follow [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md). Found a security
+issue instead of a bug? See [`SECURITY.md`](./SECURITY.md) — report it privately, not as a public issue.
+
+## Good places to start
+
+- Look for issues labeled `good first issue` — small, scoped, don't require deep familiarity with the voice
+  pipeline internals.
+- `ROADMAP.md`'s "open for contribution" section lists things that are wanted but not actively being built
+  by the maintainer — good targets that won't collide with in-progress work.
+- Docs and `docs/*.md` fixes are always welcome and low-risk — genuinely one of the highest-leverage
+  contributions on a project this size.
+
 ## Before you start
 
 1. Read [`docs/architecture.md`](./docs/architecture.md) — how a call flows through the system, and where

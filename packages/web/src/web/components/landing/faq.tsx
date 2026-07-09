@@ -14,7 +14,7 @@ const faqs = [
   },
   {
     q: "Is it free to use?",
-    a: "Yes. The self-hosted core is free forever, fair-code licensed. You only pay for the provider usage you bring yourself (Twilio, Deepgram, ElevenLabs, your LLM). A managed hosted tier may come later — the self-hosted core won't be paywalled.",
+    a: "Yes. The self-hosted core is free forever, Apache 2.0 licensed — fully open source. You only pay for the provider usage you bring yourself (Twilio, Deepgram, ElevenLabs, your LLM). A managed hosted tier may come later — the self-hosted core won't be paywalled.",
   },
   {
     q: "What compliance does it handle automatically?",
