@@ -37,7 +37,7 @@ export async function syncToSalesforce(
         headers: { Authorization: `Bearer ${accessToken}` },
         signal,
       });
-      const searchData = await searchRes.json().catch(() => null);
+      const searchData = (await searchRes.json().catch(() => null)) as any;
       let contactId: string | null = searchData?.records?.[0]?.Id ?? null;
 
       if (!contactId) {
@@ -52,7 +52,7 @@ export async function syncToSalesforce(
           }),
           signal,
         });
-        const created = await createRes.json().catch(() => null);
+        const created = (await createRes.json().catch(() => null)) as any;
         contactId = created?.id ?? null;
       }
 

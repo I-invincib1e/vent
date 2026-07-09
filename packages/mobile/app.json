@@ -2,19 +2,16 @@
   "expo": {
     "icon": "./assets/icon.png",
     "android": {
-      "package": "com.appId.runable",
+      "package": "dev.openvent.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
     },
-    "extra": {
-      "apiUrl": "https://voiceag-1mf8gfp-preview-4200.runable.site/",
-      "applicationId": "voiceag-1mf8gfp"
-    },
+    "extra": {},
     "ios": {
-      "bundleIdentifier": "com.appId.runable",
+      "bundleIdentifier": "dev.openvent.mobile",
       "supportsTablet": true
     },
     "splash": {

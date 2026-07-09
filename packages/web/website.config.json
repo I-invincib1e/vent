@@ -1,8 +1,7 @@
 {
     "id": "website",
-    "name": "Runable",
-    "description": "A template for building a React application with Vite, Hono, and Cloudflare Workers",
-    "url": "https://example.com",
-    "hostname": "xyz.runable.site",
+    "name": "OpenVent",
+    "description": "Open-core, self-hosted voice AI orchestration framework.",
+    "url": "https://openvent.dev",
     "port": 8080
 }

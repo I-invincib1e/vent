@@ -52,7 +52,7 @@ export async function bookOnGoogleCalendar(
         const body = await res.text().catch(() => "");
         throw new Error(`Google Calendar API returned ${res.status}: ${body.slice(0, 200)}`);
       }
-      const event = await res.json();
+      const event = (await res.json()) as any;
       return { eventId: (event.id as string | undefined) ?? null, htmlLink: (event.htmlLink as string | undefined) ?? null };
     },
     { integration: "google-calendar" },

@@ -77,5 +77,8 @@ task.md
 
 # Cloudflare named-tunnel credential (per ADR-013) — never commit
 .cloudflare-tunnel-token
+
+# Local GitHub token used for pushing from the sandbox — never commit
+.env.github
 community-posts-draft.md
 reddit-feedback.md

@@ -44,7 +44,7 @@ export async function syncToGoHighLevel(
         }),
         signal,
       });
-      const contact = await contactRes.json().catch(() => null);
+      const contact = (await contactRes.json().catch(() => null)) as any;
       const contactId = (contact?.contact?.id as string | undefined) ?? null;
 
       if (contactId) {

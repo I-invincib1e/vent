@@ -30,7 +30,7 @@ export async function syncToHubspot(
         }),
         signal,
       });
-      const contact = await contactRes.json().catch(() => null);
+      const contact = (await contactRes.json().catch(() => null)) as any;
 
       await fetch("https://api.hubapi.com/crm/v3/objects/calls", {
         method: "POST",
